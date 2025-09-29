@@ -1,0 +1,89 @@
+[
+  {
+    "id": "U001",
+    "name": "John Doe",
+    "email": "john.doe@email.com",
+    "phone": "+94771234567",
+    "role": "user",
+    "status": "active",
+    "joinedDate": "2024-01-15",
+    "lastLogin": "2024-12-15T10:30:00Z",
+    "totalBookings": 12,
+    "preferences": {
+      "seatClass": "business",
+      "preferredRoute": "Colombo-Kandy"
+    }
+  },
+  {
+    "id": "U002",
+    "name": "Sarah Wilson",
+    "email": "sarah.wilson@email.com",
+    "phone": "+94772345678",
+    "role": "user",
+    "status": "active",
+    "joinedDate": "2024-02-20",
+    "lastLogin": "2024-12-14T15:45:00Z",
+    "totalBookings": 8,
+    "preferences": {
+      "seatClass": "economy",
+      "preferredRoute": "Colombo-Galle"
+    }
+  },
+  {
+    "id": "U003",
+    "name": "Michael Chen",
+    "email": "michael.chen@email.com",
+    "phone": "+94773456789",
+    "role": "user",
+    "status": "active",
+    "joinedDate": "2024-03-10",
+    "lastLogin": "2024-12-13T09:15:00Z",
+    "totalBookings": 15,
+    "preferences": {
+      "seatClass": "first",
+      "preferredRoute": "Colombo-Jaffna"
+    }
+  },
+  {
+    "id": "U004",
+    "name": "Emily Johnson",
+    "email": "emily.johnson@email.com",
+    "phone": "+94774567890",
+    "role": "user",
+    "status": "suspended",
+    "joinedDate": "2024-01-05",
+    "lastLogin": "2024-12-10T14:20:00Z",
+    "totalBookings": 5,
+    "preferences": {
+      "seatClass": "business",
+      "preferredRoute": "Kandy-Nuwara Eliya"
+    }
+  },
+  {
+    "id": "U005",
+    "name": "David Brown",
+    "email": "david.brown@email.com",
+    "phone": "+94775678901",
+    "role": "user",
+    "status": "active",
+    "joinedDate": "2024-04-12",
+    "lastLogin": "2024-12-15T11:00:00Z",
+    "totalBookings": 20,
+    "preferences": {
+      "seatClass": "economy",
+      "preferredRoute": "Colombo-Trincomalee"
+    }
+  },
+  {
+    "id": "ADMIN001",
+    "name": "Admin User",
+    "email": "admin@lakgamana.com",
+    "phone": "+94770000000",
+    "role": "admin",
+    "status": "active",
+    "joinedDate": "2024-01-01",
+    "lastLogin": "2024-12-15T16:30:00Z",
+    "totalBookings": 0,
+    "preferences": {}
+  }
+]

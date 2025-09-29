@@ -1,0 +1,144 @@
+[
+  {
+    "id": "B001",
+    "userId": "U001",
+    "userName": "John Doe",
+    "trainId": "T001",
+    "trainName": "Express Train",
+    "route": "Colombo - Kandy",
+    "departureDate": "2024-12-20",
+    "departureTime": "08:00",
+    "arrivalTime": "10:30",
+    "seatClass": "business",
+    "seatNumber": "B12",
+    "passengers": [
+      {
+        "name": "John Doe",
+        "age": 35,
+        "gender": "male",
+        "idType": "passport",
+        "idNumber": "P123456789"
+      }
+    ],
+    "totalAmount": 250,
+    "status": "confirmed",
+    "bookingDate": "2024-12-15T10:30:00Z",
+    "paymentMethod": "credit_card",
+    "paymentStatus": "paid"
+  },
+  {
+    "id": "B002",
+    "userId": "U002",
+    "userName": "Sarah Wilson",
+    "trainId": "T002",
+    "trainName": "Intercity Express",
+    "route": "Colombo - Galle",
+    "departureDate": "2024-12-22",
+    "departureTime": "09:30",
+    "arrivalTime": "11:45",
+    "seatClass": "economy",
+    "seatNumber": "E25",
+    "passengers": [
+      {
+        "name": "Sarah Wilson",
+        "age": 28,
+        "gender": "female",
+        "idType": "driving_license",
+        "idNumber": "DL987654321"
+      }
+    ],
+    "totalAmount": 120,
+    "status": "confirmed",
+    "bookingDate": "2024-12-14T15:45:00Z",
+    "paymentMethod": "upi",
+    "paymentStatus": "paid"
+  },
+  {
+    "id": "B003",
+    "userId": "U003",
+    "userName": "Michael Chen",
+    "trainId": "T005",
+    "trainName": "Northern Express",
+    "route": "Colombo - Jaffna",
+    "departureDate": "2024-12-25",
+    "departureTime": "08:45",
+    "arrivalTime": "15:30",
+    "seatClass": "first",
+    "seatNumber": "F05",
+    "passengers": [
+      {
+        "name": "Michael Chen",
+        "age": 42,
+        "gender": "male",
+        "idType": "passport",
+        "idNumber": "P987654321"
+      }
+    ],
+    "totalAmount": 750,
+    "status": "confirmed",
+    "bookingDate": "2024-12-13T09:15:00Z",
+    "paymentMethod": "credit_card",
+    "paymentStatus": "paid"
+  },
+  {
+    "id": "B004",
+    "userId": "U004",
+    "userName": "Emily Johnson",
+    "trainId": "T003",
+    "trainName": "Mountain Express",
+    "route": "Kandy - Nuwara Eliya",
+    "departureDate": "2024-12-18",
+    "departureTime": "07:00",
+    "arrivalTime": "10:00",
+    "seatClass": "business",
+    "seatNumber": "B18",
+    "passengers": [
+      {
+        "name": "Emily Johnson",
+        "age": 31,
+        "gender": "female",
+        "idType": "national_id",
+        "idNumber": "NID123456789"
+      }
+    ],
+    "totalAmount": 180,
+    "status": "cancelled",
+    "bookingDate": "2024-12-10T14:20:00Z",
+    "paymentMethod": "debit_card",
+    "paymentStatus": "refunded"
+  },
+  {
+    "id": "B005",
+    "userId": "U005",
+    "userName": "David Brown",
+    "trainId": "T004",
+    "trainName": "Coastal Express",
+    "route": "Colombo - Trincomalee",
+    "departureDate": "2024-12-28",
+    "departureTime": "06:30",
+    "arrivalTime": "12:00",
+    "seatClass": "economy",
+    "seatNumber": "E42",
+    "passengers": [
+      {
+        "name": "David Brown",
+        "age": 45,
+        "gender": "male",
+        "idType": "passport",
+        "idNumber": "P456789123"
+      },
+      {
+        "name": "Lisa Brown",
+        "age": 43,
+        "gender": "female",
+        "idType": "passport",
+        "idNumber": "P789123456"
+      }
+    ],
+    "totalAmount": 400,
+    "status": "confirmed",
+    "bookingDate": "2024-12-15T11:00:00Z",
+    "paymentMethod": "wallet",
+    "paymentStatus": "paid"
+  }
+]

@@ -1,0 +1,137 @@
+[
+  {
+    "id": "T001",
+    "name": "Express Train",
+    "type": "Express",
+    "route": "Colombo - Kandy",
+    "from": "Colombo Fort",
+    "to": "Kandy",
+    "departureTime": "08:00",
+    "arrivalTime": "10:30",
+    "duration": "2h 30m",
+    "distance": "120 km",
+    "price": {
+      "economy": 150,
+      "business": 250,
+      "first": 400
+    },
+    "seats": {
+      "total": 200,
+      "available": {
+        "economy": 45,
+        "business": 12,
+        "first": 8
+      }
+    },
+    "status": "active",
+    "features": ["AC", "WiFi", "Food Service", "Charging Points"]
+  },
+  {
+    "id": "T002",
+    "name": "Intercity Express",
+    "type": "Intercity",
+    "route": "Colombo - Galle",
+    "from": "Colombo Fort",
+    "to": "Galle",
+    "departureTime": "09:30",
+    "arrivalTime": "11:45",
+    "duration": "2h 15m",
+    "distance": "110 km",
+    "price": {
+      "economy": 120,
+      "business": 200,
+      "first": 350
+    },
+    "seats": {
+      "total": 180,
+      "available": {
+        "economy": 32,
+        "business": 8,
+        "first": 5
+      }
+    },
+    "status": "active",
+    "features": ["AC", "WiFi", "Food Service"]
+  },
+  {
+    "id": "T003",
+    "name": "Mountain Express",
+    "type": "Scenic",
+    "route": "Kandy - Nuwara Eliya",
+    "from": "Kandy",
+    "to": "Nuwara Eliya",
+    "departureTime": "07:00",
+    "arrivalTime": "10:00",
+    "duration": "3h 00m",
+    "distance": "80 km",
+    "price": {
+      "economy": 100,
+      "business": 180,
+      "first": 300
+    },
+    "seats": {
+      "total": 120,
+      "available": {
+        "economy": 25,
+        "business": 6,
+        "first": 3
+      }
+    },
+    "status": "active",
+    "features": ["Scenic Views", "AC", "Food Service"]
+  },
+  {
+    "id": "T004",
+    "name": "Coastal Express",
+    "type": "Express",
+    "route": "Colombo - Trincomalee",
+    "from": "Colombo Fort",
+    "to": "Trincomalee",
+    "departureTime": "06:30",
+    "arrivalTime": "12:00",
+    "duration": "5h 30m",
+    "distance": "260 km",
+    "price": {
+      "economy": 200,
+      "business": 350,
+      "first": 550
+    },
+    "seats": {
+      "total": 250,
+      "available": {
+        "economy": 67,
+        "business": 15,
+        "first": 10
+      }
+    },
+    "status": "active",
+    "features": ["AC", "WiFi", "Food Service", "Charging Points", "Luggage Storage"]
+  },
+  {
+    "id": "T005",
+    "name": "Northern Express",
+    "type": "Express",
+    "route": "Colombo - Jaffna",
+    "from": "Colombo Fort",
+    "to": "Jaffna",
+    "departureTime": "08:45",
+    "arrivalTime": "15:30",
+    "duration": "6h 45m",
+    "distance": "400 km",
+    "price": {
+      "economy": 280,
+      "business": 480,
+      "first": 750
+    },
+    "seats": {
+      "total": 300,
+      "available": {
+        "economy": 89,
+        "business": 22,
+        "first": 12
+      }
+    },
+    "status": "active",
+    "features": ["AC", "WiFi", "Food Service", "Charging Points", "Luggage Storage", "Entertainment"]
+  }
+]
