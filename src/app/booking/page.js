@@ -17,7 +17,8 @@ function BookingForm() {
     from: searchParams.get('from') || '',
     to: searchParams.get('to') || '',
     date: searchParams.get('date') || '',
-    passengers: parseInt(searchParams.get('passengers')) || 1
+    adults: parseInt(searchParams.get('adults')) || 1,
+    children: parseInt(searchParams.get('children')) || 0
   });
   const [passengerDetails, setPassengerDetails] = useState([]);
   const [seatClass, setSeatClass] = useState('economy');
@@ -40,7 +41,8 @@ function BookingForm() {
 
   // Initialize passenger details
   useEffect(() => {
-    const details = Array.from({ length: searchForm.passengers }, (_, index) => ({
+    const totalPassengers = (parseInt(searchForm.adults) || 0) + (parseInt(searchForm.children) || 0);
+    const details = Array.from({ length: totalPassengers }, (_, index) => ({
       name: '',
       age: '',
       gender: '',
@@ -48,7 +50,7 @@ function BookingForm() {
       idNumber: ''
     }));
     setPassengerDetails(details);
-  }, [searchForm.passengers]);
+  }, [searchForm.adults, searchForm.children]);
 
   const handleInputChange = (field, value) => {
     setSearchForm(prev => ({
@@ -81,7 +83,15 @@ function BookingForm() {
         train: selectedTrain,
         passengers: passengerDetails,
         seatClass,
-        totalAmount: selectedTrain.price[seatClass] * searchForm.passengers,
+        adultsCount: parseInt(searchForm.adults) || 0,
+        childrenCount: parseInt(searchForm.children) || 0,
+        totalAmount: (() => {
+          const adultUnit = selectedTrain.price[seatClass];
+          const childUnit = Math.round(adultUnit / 2);
+          const numAdults = parseInt(searchForm.adults) || 0;
+          const numChildren = parseInt(searchForm.children) || 0;
+          return adultUnit * numAdults + childUnit * numChildren;
+        })(),
         // Persist the selected date for later display/formatting
         departureDate: searchForm.date
       };
@@ -156,15 +166,29 @@ function BookingForm() {
                     required
                   />
                   <Select
-                    label="Passengers"
-                    value={searchForm.passengers}
-                    onChange={(e) => handleInputChange('passengers', parseInt(e.target.value))}
+                    label="Adults"
+                    value={searchForm.adults}
+                    onChange={(e) => handleInputChange('adults', parseInt(e.target.value))}
                     options={[
-                      { value: 1, label: '1 Passenger' },
-                      { value: 2, label: '2 Passengers' },
-                      { value: 3, label: '3 Passengers' },
-                      { value: 4, label: '4 Passengers' },
-                      { value: 5, label: '5 Passengers' }
+                      { value: 1, label: '1 Adult' },
+                      { value: 2, label: '2 Adults' },
+                      { value: 3, label: '3 Adults' },
+                      { value: 4, label: '4 Adults' },
+                      { value: 5, label: '5 Adults' }
+                    ]}
+                    required
+                  />
+                  <Select
+                    label="Children"
+                    value={searchForm.children}
+                    onChange={(e) => handleInputChange('children', parseInt(e.target.value))}
+                    options={[
+                      { value: 0, label: '0 Children' },
+                      { value: 1, label: '1 Child' },
+                      { value: 2, label: '2 Children' },
+                      { value: 3, label: '3 Children' },
+                      { value: 4, label: '4 Children' },
+                      { value: 5, label: '5 Children' }
                     ]}
                     required
                   />
@@ -289,7 +313,14 @@ function BookingForm() {
                           <div className="flex justify-between">
                             <span>Total Amount:</span>
                             <span className="font-bold text-lg">
-                              {formatCurrency(selectedTrain.price[seatClass] * searchForm.passengers)}
+                              {(() => {
+                                const adultUnit = selectedTrain.price[seatClass];
+                                const childUnit = Math.round(adultUnit / 2);
+                                const numAdults = parseInt(searchForm.adults) || 0;
+                                const numChildren = parseInt(searchForm.children) || 0;
+                                const total = adultUnit * numAdults + childUnit * numChildren;
+                                return formatCurrency(total);
+                              })()}
                             </span>
                           </div>
                         </div>

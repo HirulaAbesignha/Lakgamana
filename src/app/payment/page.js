@@ -209,8 +209,12 @@ export default function PaymentPage() {
                     <div className="border-t pt-4">
                       <div className="space-y-2">
                         <div className="flex justify-between text-sm">
-                          <span>Base Fare ({bookingData.passengers.length} × {formatCurrency(bookingData.train.price[bookingData.seatClass])})</span>
-                          <span>{formatCurrency(bookingData.train.price[bookingData.seatClass] * bookingData.passengers.length)}</span>
+                          <span>Adults ({bookingData.adultsCount} × {formatCurrency(bookingData.train.price[bookingData.seatClass])})</span>
+                          <span>{formatCurrency(bookingData.train.price[bookingData.seatClass] * (bookingData.adultsCount || 0))}</span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span>Children ({bookingData.childrenCount} × {formatCurrency(Math.round(bookingData.train.price[bookingData.seatClass] / 2))})</span>
+                          <span>{formatCurrency(Math.round(bookingData.train.price[bookingData.seatClass] / 2) * (bookingData.childrenCount || 0))}</span>
                         </div>
                         <div className="flex justify-between text-sm">
                           <span>Service Fee</span>
