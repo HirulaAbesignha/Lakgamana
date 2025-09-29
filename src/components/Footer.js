@@ -47,7 +47,7 @@ const Footer = () => {
               </div>
               <span className="text-xl font-bold">Lakgamana</span>
             </div>
-            <p className="text-gray-400 mb-6 max-w-md">
+            <p className="text-sm text-gray-400 mb-6 max-w-md">
               Your trusted partner for convenient and reliable train travel across Sri Lanka. 
               Book your tickets easily and enjoy a comfortable journey.
             </p>
@@ -74,8 +74,8 @@ const Footer = () => {
 
           {/* Quick Links */}
           <div>
-            <h3 className="text-lg font-semibold mb-4">Company</h3>
-            <ul className="space-y-2">
+            <h5 className="text-lg font-semibold mb-4">Company</h5>
+            <ul className="text-sm space-y-2">
               {footerLinks.company.map((link) => (
                 <li key={link.name}>
                   <Link 
@@ -90,8 +90,8 @@ const Footer = () => {
           </div>
 
           <div>
-            <h3 className="text-lg font-semibold mb-4">Services</h3>
-            <ul className="space-y-2">
+            <h5 className="text-lg font-semibold mb-4">Services</h5>
+            <ul className="text-sm space-y-2">
               {footerLinks.services.map((link) => (
                 <li key={link.name}>
                   <Link 
@@ -106,8 +106,8 @@ const Footer = () => {
           </div>
 
           <div>
-            <h3 className="text-lg font-semibold mb-4">Support</h3>
-            <ul className="space-y-2">
+            <h5 className="text-lg font-semibold mb-4">Support</h5>
+            <ul className="text-sm space-y-2">
               {footerLinks.support.map((link) => (
                 <li key={link.name}>
                   <Link 
@@ -125,7 +125,7 @@ const Footer = () => {
         {/* Bottom Footer */}
         <div className="border-t border-gray-800 mt-12 pt-8">
           <div className="flex flex-col md:flex-row justify-between items-center">
-            <div className="text-gray-400 text-sm mb-4 md:mb-0">
+            <div className="text-sm text-gray-400 text-sm mb-4 md:mb-0">
               © {currentYear} Lakgamana. All rights reserved.
             </div>
             <div className="flex flex-wrap justify-center md:justify-end space-x-6 text-sm">

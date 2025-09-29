@@ -9,7 +9,7 @@ const Card = ({ children, className = '', hover = false, padding = 'default', ..
   const paddingClasses = {
     none: '',
     sm: 'p-4',
-    default: 'p-6',
+    default: 'p-1',
     lg: 'p-8'
   };
   
