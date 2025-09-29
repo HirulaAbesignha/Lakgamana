@@ -64,7 +64,7 @@ const PopularRoutes = () => {
           <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
             Popular Routes
           </h2>
-          <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+          <p className="text-base text-gray-600 max-w-3xl mx-auto">
             Discover our most popular train routes and experience the beauty of Sri Lanka 
             with comfortable and reliable train services.
           </p>
@@ -78,13 +78,7 @@ const PopularRoutes = () => {
               className="overflow-hidden"
               style={{ animationDelay: `${index * 0.1}s` }}
             >
-              <div className="h-48 bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center">
-                <div className="text-white text-center">
-                  <svg className="w-16 h-16 mx-auto mb-2" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z" />
-                  </svg>
-                  <p className="text-sm opacity-90">Train Journey</p>
-                </div>
+              <div className="bg-[url('/train-1.png')] bg-cover bg-center bg-no-repeat text-white h-40">
               </div>
               
               <CardContent className="p-6">

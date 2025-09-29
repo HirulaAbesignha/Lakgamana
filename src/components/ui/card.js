@@ -3,13 +3,13 @@
 import { cn } from '../../lib/utils';
 
 const Card = ({ children, className = '', hover = false, padding = 'default', ...props }) => {
-  const baseClasses = 'bg-white rounded-xl shadow-sm border border-gray-200';
+  const baseClasses = 'bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6';
   const hoverClasses = hover ? 'hover:shadow-md transition-shadow duration-200' : '';
   
   const paddingClasses = {
     none: '',
     sm: 'p-4',
-    default: 'p-1',
+    default: 'p-6',
     lg: 'p-8'
   };
   
