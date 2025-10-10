@@ -1,51 +1,136 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import Button from '../../components/ui/button';
 import { StatusBadge } from '../../components/ui/badge';
 import { Modal, ModalHeader, ModalBody, ModalFooter } from '../../components/ui/modal';
-import bookingsData from '../../data/bookings.json';
 import { formatCurrency, formatDate, formatTime } from '../../lib/utils';
 
 export default function MyTicketsPage() {
-  const [bookings, setBookings] = useState([]);
-  const [selectedBooking, setSelectedBooking] = useState(null);
+  const router = useRouter();
+  const [tickets, setTickets] = useState([]);
+  const [selectedTicket, setSelectedTicket] = useState(null);
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
   const [isRescheduleModalOpen, setIsRescheduleModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    // Simulate user bookings (in real app, this would be filtered by user ID)
-    setBookings(bookingsData.filter(booking => booking.userId === 'U001'));
+    fetchMyTickets();
   }, []);
 
-  const handleCancelBooking = (booking) => {
-    setSelectedBooking(booking);
+  const fetchMyTickets = async () => {
+    try {
+      setLoading(true);
+      const authData = JSON.parse(localStorage.getItem('lak_auth') || '{}');
+      
+      if (!authData.token) {
+        router.push('/login');
+        return;
+      }
+
+      const response = await fetch('http://localhost:8081/bookings/user', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authData.token}`
+        }
+      });
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          localStorage.removeItem('lak_auth');
+          router.push('/login');
+          return;
+        }
+        throw new Error('Failed to fetch bookings');
+      }
+
+      const result = await response.json();
+      setTickets(Array.isArray(result.data) ? result.data : []);
+    } catch (error) {
+      console.error('Error fetching bookings:', error);
+      setError(error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCancelTicket = (ticket) => {
+    setSelectedTicket(ticket);
     setIsCancelModalOpen(true);
   };
 
-  const handleRescheduleBooking = (booking) => {
-    setSelectedBooking(booking);
+  const handleRescheduleTicket = (ticket) => {
+    setSelectedTicket(ticket);
     setIsRescheduleModalOpen(true);
   };
 
-  const confirmCancel = () => {
-    if (selectedBooking) {
-      setBookings(prev => 
-        prev.map(booking => 
-          booking.id === selectedBooking.id 
-            ? { ...booking, status: 'cancelled' }
-            : booking
-        )
-      );
-    }
-    setIsCancelModalOpen(false);
-    setSelectedBooking(null);
+  const handleEditTicket = (ticket) => {
+    setSelectedTicket(ticket);
+    setIsEditModalOpen(true);
   };
 
-  const downloadTicket = (booking) => {
+  const handleDeleteTicket = async (ticket) => {
+    if (confirm('Are you sure you want to delete this booking? This action cannot be undone.')) {
+      try {
+        const authData = JSON.parse(localStorage.getItem('lak_auth') || '{}');
+        
+        const response = await fetch(`http://localhost:8081/bookings/${selectedTicket.bookingId}/cancel?reason=Deleted by user`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${authData.token}`
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to delete booking');
+        }
+
+        // Refresh tickets list
+        await fetchMyTickets();
+      } catch (error) {
+        console.error('Error deleting booking:', error);
+        setError(error.message);
+      }
+    }
+  };
+
+  const confirmCancel = async () => {
+    if (selectedTicket) {
+      try {
+        const authData = JSON.parse(localStorage.getItem('lak_auth') || '{}');
+        
+        const response = await fetch(`http://localhost:8081/bookings/${selectedTicket.bookingId}/cancel?reason=Cancelled by user`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${authData.token}`
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to cancel booking');
+        }
+
+        // Refresh tickets list
+        await fetchMyTickets();
+      } catch (error) {
+        console.error('Error cancelling booking:', error);
+        setError(error.message);
+      }
+    }
+    setIsCancelModalOpen(false);
+    setSelectedTicket(null);
+  };
+
+  const downloadTicket = (ticket) => {
     // Simulate PDF download
-    alert(`Downloading ticket for booking ${booking.id}`);
+    alert(`Downloading ticket for ${ticket.bookingId}`);
   };
 
   const getStatusColor = (status) => {
@@ -57,6 +142,41 @@ export default function MyTicketsPage() {
     }
   };
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading your tickets...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-6 max-w-md">
+          <div className="flex">
+            <svg className="w-5 h-5 text-red-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+            </svg>
+            <div>
+              <h3 className="text-sm font-medium text-red-800">Error loading tickets</h3>
+              <p className="text-sm text-red-700 mt-1">{error}</p>
+              <button 
+                onClick={fetchMyTickets}
+                className="mt-2 text-sm text-red-600 hover:text-red-500 underline"
+              >
+                Try again
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="container-custom">
@@ -66,7 +186,7 @@ export default function MyTicketsPage() {
             <p className="text-gray-600">Manage your train bookings and reservations</p>
           </div>
 
-          {bookings.length === 0 ? (
+          {tickets.length === 0 ? (
             <Card className="text-center py-12">
               <CardContent>
                 <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -83,58 +203,56 @@ export default function MyTicketsPage() {
             </Card>
           ) : (
             <div className="space-y-6">
-              {bookings.map((booking) => (
-                <Card key={booking.id} hover>
+              {tickets.map((ticket) => (
+                <Card key={ticket.id} hover>
                   <CardContent className="p-6">
                     <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
                       <div className="flex-1">
                         <div className="flex items-center justify-between mb-4">
                           <div>
                             <h3 className="text-xl font-semibold text-gray-900">
-                              {booking.trainName}
+                              {ticket.train.name}
                             </h3>
-                            <p className="text-gray-600">{booking.route}</p>
+                            <p className="text-gray-600">{ticket.train.fromStation} → {ticket.train.toStation}</p>
                           </div>
-                          <StatusBadge status={getStatusColor(booking.status)} />
+                          <StatusBadge status={getStatusColor(ticket.status.toLowerCase())} />
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
                           <div>
                             <p className="text-sm text-gray-500">Booking ID</p>
-                            <p className="font-medium">{booking.id}</p>
+                            <p className="font-medium">{ticket.bookingId}</p>
                           </div>
                           <div>
-                            <p className="text-sm text-gray-500">Date</p>
-                            <p className="font-medium">{formatDate(booking.departureDate)}</p>
+                            <p className="text-sm text-gray-500">Journey Date</p>
+                            <p className="font-medium">{formatDate(ticket.departureDate)}</p>
                           </div>
                           <div>
-                            <p className="text-sm text-gray-500">Time</p>
+                            <p className="text-sm text-gray-500">Departure Time</p>
                             <p className="font-medium">
-                              {formatTime(booking.departureTime)} - {formatTime(booking.arrivalTime)}
+                              {formatTime(ticket.departureTime)} - {formatTime(ticket.arrivalTime)}
                             </p>
                           </div>
                           <div>
                             <p className="text-sm text-gray-500">Seat</p>
                             <p className="font-medium">
-                              {booking.seatClass.charAt(0).toUpperCase() + booking.seatClass.slice(1)} - {booking.seatNumber}
+                              {ticket.seatNumber} ({ticket.seatClass})
                             </p>
                           </div>
                         </div>
 
-                        <div className="flex flex-wrap gap-2 mb-4">
-                          {booking.passengers.map((passenger, index) => (
-                            <span key={index} className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
-                              {passenger.name}
-                            </span>
-                          ))}
-                        </div>
-
                         <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-sm text-gray-500">Total Amount</p>
-                            <p className="text-2xl font-bold text-green-600">
-                              {formatCurrency(booking.totalAmount)}
-                            </p>
+                          <div className="flex items-center space-x-4">
+                            <div>
+                              <p className="text-sm text-gray-500">Total Amount</p>
+                              <p className="text-lg font-semibold text-gray-900">
+                                {formatCurrency(ticket.totalAmount)}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-sm text-gray-500">Passengers</p>
+                              <p className="font-medium">{ticket.passengers?.length || 0}</p>
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -144,7 +262,7 @@ export default function MyTicketsPage() {
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => downloadTicket(booking)}
+                            onClick={() => downloadTicket(ticket)}
                             className="w-full lg:w-auto"
                           >
                             <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -153,12 +271,24 @@ export default function MyTicketsPage() {
                             Download PDF
                           </Button>
                           
-                          {booking.status === 'confirmed' && (
+                          {(ticket.status === 'CONFIRMED' || ticket.status === 'PENDING') && (
                             <>
                               <Button
                                 variant="outline"
                                 size="sm"
-                                onClick={() => handleRescheduleBooking(booking)}
+                                onClick={() => handleEditTicket(ticket)}
+                                className="w-full lg:w-auto"
+                              >
+                                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                </svg>
+                                Edit
+                              </Button>
+
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleRescheduleTicket(ticket)}
                                 className="w-full lg:w-auto"
                               >
                                 <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -170,13 +300,25 @@ export default function MyTicketsPage() {
                               <Button
                                 variant="danger"
                                 size="sm"
-                                onClick={() => handleCancelBooking(booking)}
+                                onClick={() => handleCancelTicket(ticket)}
                                 className="w-full lg:w-auto"
                               >
                                 <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                                 </svg>
                                 Cancel
+                              </Button>
+
+                              <Button
+                                variant="danger"
+                                size="sm"
+                                onClick={() => handleDeleteTicket(ticket)}
+                                className="w-full lg:w-auto"
+                              >
+                                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                                Delete
                               </Button>
                             </>
                           )}
@@ -191,18 +333,18 @@ export default function MyTicketsPage() {
         </div>
       </div>
 
-      {/* Cancel Booking Modal */}
+      {/* Cancel Ticket Modal */}
       <Modal
         isOpen={isCancelModalOpen}
         onClose={() => setIsCancelModalOpen(false)}
-        title="Cancel Booking"
+        title="Cancel Ticket"
         size="md"
       >
         <ModalBody>
-          {selectedBooking && (
+          {selectedTicket && (
             <div>
               <p className="text-gray-600 mb-4">
-                Are you sure you want to cancel your booking for <strong>{selectedBooking.trainName}</strong>?
+                Are you sure you want to cancel your booking for <strong>{selectedTicket.train?.name}</strong>?
               </p>
               <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
                 <div className="flex">
@@ -222,10 +364,10 @@ export default function MyTicketsPage() {
         </ModalBody>
         <ModalFooter>
           <Button variant="outline" onClick={() => setIsCancelModalOpen(false)}>
-            Keep Booking
+            Keep Ticket
           </Button>
           <Button variant="danger" onClick={confirmCancel}>
-            Cancel Booking
+            Cancel Ticket
           </Button>
         </ModalFooter>
       </Modal>
@@ -238,10 +380,10 @@ export default function MyTicketsPage() {
         size="lg"
       >
         <ModalBody>
-          {selectedBooking && (
+          {selectedTicket && (
             <div>
               <p className="text-gray-600 mb-6">
-                Reschedule your booking for <strong>{selectedBooking.trainName}</strong>
+                Reschedule your booking for <strong>{selectedTicket.train?.name}</strong>
               </p>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -292,6 +434,102 @@ export default function MyTicketsPage() {
           </Button>
           <Button variant="primary" onClick={() => setIsRescheduleModalOpen(false)}>
             Confirm Reschedule
+          </Button>
+        </ModalFooter>
+      </Modal>
+
+      {/* Edit Booking Modal */}
+      <Modal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        title="Edit Booking"
+        size="lg"
+      >
+        <ModalBody>
+          {selectedTicket && (
+            <div className="space-y-6">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="flex">
+                  <svg className="w-5 h-5 text-blue-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                  </svg>
+                  <div>
+                    <p className="text-sm text-blue-800">
+                      <strong>Note:</strong> You can only edit passenger details and contact information. 
+                      Train and date changes require rescheduling.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <h3 className="font-semibold text-gray-900 mb-4">Passenger Information</h3>
+                <div className="space-y-4">
+                  {selectedTicket.passengers?.map((passenger, index) => (
+                    <div key={index} className="border rounded-lg p-4">
+                      <h4 className="font-medium mb-3">Passenger {index + 1}</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Full Name
+                          </label>
+                          <input
+                            type="text"
+                            defaultValue={passenger.name}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Age
+                          </label>
+                          <input
+                            type="number"
+                            defaultValue={passenger.age}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Gender
+                          </label>
+                          <select
+                            defaultValue={passenger.gender}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          >
+                            <option value="MALE">Male</option>
+                            <option value="FEMALE">Female</option>
+                            <option value="OTHER">Other</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            ID Number
+                          </label>
+                          <input
+                            type="text"
+                            defaultValue={passenger.idNumber}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+        </ModalBody>
+        <ModalFooter>
+          <Button variant="outline" onClick={() => setIsEditModalOpen(false)}>
+            Cancel
+          </Button>
+          <Button onClick={() => {
+            // Here you would implement the save functionality
+            alert('Edit functionality would be implemented here');
+            setIsEditModalOpen(false);
+          }}>
+            Save Changes
           </Button>
         </ModalFooter>
       </Modal>

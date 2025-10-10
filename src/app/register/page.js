@@ -87,19 +87,53 @@ export default function RegisterPage() {
     
     setIsLoading(true);
     
-    // Simulate API call
     try {
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      const role = 'user';
-      const user = { name: `${formData.firstName} ${formData.lastName}`.trim(), email: formData.email };
+      // Call the backend registration API
+      const response = await fetch('http://localhost:8081/auth/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          email: formData.email,
+          phone: formData.phone,
+          password: formData.password,
+          confirmPassword: formData.confirmPassword,
+          agreeToTerms: formData.agreeToTerms
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.message || 'Registration failed');
+      }
+
+      // Store authentication data
       try {
-        localStorage.setItem('lak_auth', JSON.stringify({ isLoggedIn: true, role, user }));
+        localStorage.setItem('lak_auth', JSON.stringify({ 
+          isLoggedIn: true, 
+          token: result.data.token,
+          refreshToken: result.data.refreshToken,
+          user: result.data.user,
+          role: result.data.user.role?.toLowerCase() || 'user',
+          expiresIn: result.data.expiresIn
+        }));
+        
+        // Trigger storage event to update navbar
+        window.dispatchEvent(new StorageEvent('storage', {
+          key: 'lak_auth',
+          newValue: localStorage.getItem('lak_auth')
+        }));
       } catch {}
-      // Redirect after register
+      
+      // Redirect after successful registration
       router.push('/tickets');
     } catch (error) {
-      setErrors({ general: 'Registration failed. Please try again.' });
+      console.error('Registration error:', error);
+      setErrors({ general: error.message || 'Registration failed. Please try again.' });
     } finally {
       setIsLoading(false);
     }

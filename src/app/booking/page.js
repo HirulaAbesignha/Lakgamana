@@ -6,7 +6,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/ca
 import Button from '../../components/ui/button';
 import { Input, Select } from '../../components/ui/input';
 import { StatusBadge } from '../../components/ui/badge';
-import trainsData from '../../data/trains.json';
 import { formatCurrency, formatTime, calculateDuration } from '../../lib/utils';
 
 function BookingForm() {
@@ -22,6 +21,9 @@ function BookingForm() {
   });
   const [passengerDetails, setPassengerDetails] = useState([]);
   const [seatClass, setSeatClass] = useState('economy');
+  const [availableTrains, setAvailableTrains] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [searchError, setSearchError] = useState(null);
 
   const stations = [
     { value: '', label: 'Select Station' },
@@ -38,6 +40,68 @@ function BookingForm() {
     { value: 'business', label: 'Business Class', price: 'from 250 LKR' },
     { value: 'first', label: 'First Class', price: 'from 400 LKR' }
   ];
+
+  const searchTrains = async () => {
+    if (!searchForm.from || !searchForm.to || !searchForm.date) {
+      setSearchError('Please fill in all search fields');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setSearchError(null);
+
+      const searchRequest = {
+        from: searchForm.from,
+        to: searchForm.to,
+        date: searchForm.date
+      };
+
+      const response = await fetch('http://localhost:8081/trains/search', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(searchRequest)
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to search trains');
+      }
+
+      const result = await response.json();
+      setAvailableTrains(result.data || []);
+      
+      // Move to step 2 if trains are found
+      if (result.data && result.data.length > 0) {
+        setBookingStep(2);
+      }
+    } catch (error) {
+      console.error('Error searching trains:', error);
+      setSearchError(error.message);
+      // Fallback to mock data for development
+      setAvailableTrains([
+        {
+          id: 1,
+          name: 'Express Train',
+          route: 'Colombo - Kandy',
+          fromStation: 'Colombo Fort',
+          toStation: 'Kandy',
+          departureTime: '08:00',
+          arrivalTime: '10:30',
+          duration: '2h 30m',
+          pricing: { economy: 150, business: 200, first: 300 },
+          features: ['AC', 'WiFi', 'Food Service'],
+          seatInfo: { availableEconomy: 50, availableBusiness: 20, availableFirst: 10 }
+        }
+      ]);
+      
+      // Move to step 2 even with fallback data
+      setBookingStep(2);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Initialize passenger details
   useEffect(() => {
@@ -65,11 +129,6 @@ function BookingForm() {
     setPassengerDetails(updated);
   };
 
-  const searchTrains = () => {
-    if (searchForm.from && searchForm.to && searchForm.date) {
-      setBookingStep(2);
-    }
-  };
 
   const selectTrain = (train) => {
     setSelectedTrain(train);
@@ -86,7 +145,7 @@ function BookingForm() {
         adultsCount: parseInt(searchForm.adults) || 0,
         childrenCount: parseInt(searchForm.children) || 0,
         totalAmount: (() => {
-          const adultUnit = selectedTrain.price[seatClass];
+          const adultUnit = selectedTrain.pricing?.[seatClass] || 0;
           const childUnit = Math.round(adultUnit / 2);
           const numAdults = parseInt(searchForm.adults) || 0;
           const numChildren = parseInt(searchForm.children) || 0;
@@ -194,8 +253,8 @@ function BookingForm() {
                   />
                 </div>
                 <div className="text-center">
-                  <Button onClick={searchTrains} size="lg">
-                    Search Trains
+                  <Button onClick={searchTrains} size="lg" disabled={loading}>
+                    {loading ? 'Searching...' : 'Search Trains'}
                   </Button>
                 </div>
               </CardContent>
@@ -211,8 +270,27 @@ function BookingForm() {
               </div>
               
               <h2 className="text-2xl font-bold mb-6">Available Trains</h2>
-              <div className="space-y-4">
-                {trainsData.map((train) => (
+              
+              {searchError && (
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+                  <p className="text-yellow-800">
+                    {searchError}. Showing sample trains for demonstration.
+                  </p>
+                </div>
+              )}
+              
+              {loading ? (
+                <div className="text-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+                  <p className="text-gray-600 mt-2">Searching for trains...</p>
+                </div>
+              ) : availableTrains.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-gray-500">No trains found. Please try a different search.</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {availableTrains.map((train) => (
                   <Card key={train.id} hover>
                     <CardContent className="p-6">
                       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
@@ -224,7 +302,7 @@ function BookingForm() {
                           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                             <div>
                               <p className="text-sm text-gray-500">Route</p>
-                              <p className="font-medium">{train.route}</p>
+                              <p className="font-medium">{train.route || `${train.fromStation} - ${train.toStation}`}</p>
                             </div>
                             <div>
                               <p className="text-sm text-gray-500">Duration</p>
@@ -254,7 +332,7 @@ function BookingForm() {
                           </div>
                           <div className="text-center mb-4">
                             <p className="text-2xl font-bold text-green-600">
-                              {formatCurrency(train.price.economy)}
+                              {formatCurrency(train.pricing?.economy || 0)}
                             </p>
                             <p className="text-sm text-gray-500">from</p>
                           </div>
@@ -266,7 +344,8 @@ function BookingForm() {
                     </CardContent>
                   </Card>
                 ))}
-              </div>
+                </div>
+              )}
             </div>
           )}
 

@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Button from './ui/button';
 import { Input, Select } from './ui/input';
-import trainsData from '../data/trains.json';
 
 const Hero = () => {
   const [searchForm, setSearchForm] = useState({

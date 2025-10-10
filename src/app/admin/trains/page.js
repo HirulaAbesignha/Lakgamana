@@ -1,52 +1,113 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card';
 import Button from '../../../components/ui/button';
 import { Input, Select, TextArea } from '../../../components/ui/input';
 import { StatusBadge } from '../../../components/ui/badge';
 import { Modal, ModalHeader, ModalBody, ModalFooter } from '../../../components/ui/modal';
-import trainsData from '../../../data/trains.json';
 import { formatCurrency } from '../../../lib/utils';
 
 export default function AdminTrainsPage() {
-  const [trains, setTrains] = useState(trainsData);
+  const router = useRouter();
+  const [trains, setTrains] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [selectedTrain, setSelectedTrain] = useState(null);
   const [trainForm, setTrainForm] = useState({
     name: '',
-    type: '',
+    type: 'EXPRESS',
     route: '',
-    from: '',
-    to: '',
+    fromStation: '',
+    toStation: '',
     departureTime: '',
     arrivalTime: '',
     duration: '',
     distance: '',
-    price: {
+    pricing: {
       economy: '',
       business: '',
       first: ''
     },
-    seats: {
-      total: '',
-      available: {
-        economy: '',
-        business: '',
-        first: ''
-      }
+    seatInfo: {
+      totalSeats: '',
+      availableEconomy: '',
+      availableBusiness: '',
+      availableFirst: ''
     },
     features: [],
-    status: 'active'
+    status: 'ACTIVE'
   });
 
+  useEffect(() => {
+    // Check authentication first
+    const authData = JSON.parse(localStorage.getItem('lak_auth') || '{}');
+    console.log('Initial auth check:', authData);
+    
+    if (!authData.token) {
+      console.log('No token found, redirecting to login');
+      router.push('/login');
+      return;
+    }
+    
+    fetchTrains();
+  }, [router]);
+
+  const fetchTrains = async () => {
+    try {
+      setLoading(true);
+      const authData = JSON.parse(localStorage.getItem('lak_auth') || '{}');
+      
+      console.log('Auth data from localStorage:', authData);
+      
+      if (!authData.token) {
+        console.error('No authentication token found');
+        router.push('/login');
+        return;
+      }
+
+      const response = await fetch('http://localhost:8081/trains', {
+        headers: {
+          'Authorization': `Bearer ${authData.token}`
+        }
+      });
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          console.error('Unauthorized access - redirecting to login');
+          router.push('/login');
+          return;
+        }
+        throw new Error('Failed to fetch trains');
+      }
+
+      const result = await response.json();
+      const trainsData = result.data?.content || result.data || [];
+      console.log('Trains data from API:', trainsData);
+      setTrains(trainsData);
+    } catch (error) {
+      console.error('Error fetching trains:', error);
+      setError(error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const trainTypes = [
-    { value: 'express', label: 'Express' },
-    { value: 'intercity', label: 'Intercity' },
-    { value: 'scenic', label: 'Scenic' },
-    { value: 'local', label: 'Local' }
+    { value: 'EXPRESS', label: 'Express' },
+    { value: 'INTERCITY', label: 'Intercity' },
+    { value: 'SCENIC', label: 'Scenic' },
+    { value: 'LOCAL', label: 'Local' }
+  ];
+
+  const trainStatuses = [
+    { value: 'ACTIVE', label: 'Active' },
+    { value: 'INACTIVE', label: 'Inactive' },
+    { value: 'MAINTENANCE', label: 'Maintenance' }
   ];
 
   const trainFeatures = [
@@ -83,29 +144,27 @@ export default function AdminTrainsPage() {
   const openAddModal = () => {
     setTrainForm({
       name: '',
-      type: '',
+      type: 'EXPRESS',
       route: '',
-      from: '',
-      to: '',
+      fromStation: '',
+      toStation: '',
       departureTime: '',
       arrivalTime: '',
       duration: '',
       distance: '',
-      price: {
+      pricing: {
         economy: '',
         business: '',
         first: ''
       },
-      seats: {
-        total: '',
-        available: {
-          economy: '',
-          business: '',
-          first: ''
-        }
+      seatInfo: {
+        totalSeats: '',
+        availableEconomy: '',
+        availableBusiness: '',
+        availableFirst: ''
       },
       features: [],
-      status: 'active'
+      status: 'ACTIVE'
     });
     setIsAddModalOpen(true);
   };
@@ -116,26 +175,24 @@ export default function AdminTrainsPage() {
       name: train.name,
       type: train.type,
       route: train.route,
-      from: train.from,
-      to: train.to,
+      fromStation: train.fromStation,
+      toStation: train.toStation,
       departureTime: train.departureTime,
       arrivalTime: train.arrivalTime,
       duration: train.duration,
       distance: train.distance,
-      price: {
-        economy: train.price.economy.toString(),
-        business: train.price.business.toString(),
-        first: train.price.first.toString()
+      pricing: {
+        economy: train.pricing?.economy?.toString() || '',
+        business: train.pricing?.business?.toString() || '',
+        first: train.pricing?.first?.toString() || ''
       },
-      seats: {
-        total: train.seats.total.toString(),
-        available: {
-          economy: train.seats.available.economy.toString(),
-          business: train.seats.available.business.toString(),
-          first: train.seats.available.first.toString()
-        }
+      seatInfo: {
+        totalSeats: train.seatInfo?.totalSeats?.toString() || '',
+        availableEconomy: train.seatInfo?.availableEconomy?.toString() || '',
+        availableBusiness: train.seatInfo?.availableBusiness?.toString() || '',
+        availableFirst: train.seatInfo?.availableFirst?.toString() || ''
       },
-      features: train.features,
+      features: train.features || [],
       status: train.status
     });
     setIsEditModalOpen(true);
@@ -146,61 +203,151 @@ export default function AdminTrainsPage() {
     setIsDeleteModalOpen(true);
   };
 
-  const handleAddTrain = () => {
-    const newTrain = {
-      id: `T${String(trains.length + 1).padStart(3, '0')}`,
-      ...trainForm,
-      price: {
-        economy: parseInt(trainForm.price.economy),
-        business: parseInt(trainForm.price.business),
-        first: parseInt(trainForm.price.first)
-      },
-      seats: {
-        total: parseInt(trainForm.seats.total),
-        available: {
-          economy: parseInt(trainForm.seats.available.economy),
-          business: parseInt(trainForm.seats.available.business),
-          first: parseInt(trainForm.seats.available.first)
-        }
+  const handleAddTrain = async () => {
+    try {
+      const authData = JSON.parse(localStorage.getItem('lak_auth') || '{}');
+      
+      const trainData = {
+        name: trainForm.name,
+        type: trainForm.type,
+        route: trainForm.route,
+        fromStation: trainForm.fromStation,
+        toStation: trainForm.toStation,
+        departureTime: trainForm.departureTime,
+        arrivalTime: trainForm.arrivalTime,
+        duration: trainForm.duration,
+        distance: parseFloat(trainForm.distance),
+        pricing: {
+          economy: parseFloat(trainForm.pricing.economy),
+          business: parseFloat(trainForm.pricing.business),
+          first: parseFloat(trainForm.pricing.first)
+        },
+        seatInfo: {
+          totalSeats: parseInt(trainForm.seatInfo.totalSeats),
+          availableEconomy: parseInt(trainForm.seatInfo.availableEconomy),
+          availableBusiness: parseInt(trainForm.seatInfo.availableBusiness),
+          availableFirst: parseInt(trainForm.seatInfo.availableFirst)
+        },
+        features: trainForm.features,
+        status: trainForm.status
+      };
+
+      const response = await fetch('http://localhost:8081/trains', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authData.token}`
+        },
+        body: JSON.stringify(trainData)
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to create train');
       }
-    };
-    setTrains(prev => [...prev, newTrain]);
-    setIsAddModalOpen(false);
+
+      await fetchTrains(); // Refresh the list
+      setIsAddModalOpen(false);
+    } catch (error) {
+      console.error('Error creating train:', error);
+      alert('Failed to create train: ' + error.message);
+    }
   };
 
-  const handleEditTrain = () => {
-    setTrains(prev => 
-      prev.map(train => 
-        train.id === selectedTrain.id 
-          ? {
-              ...train,
-              ...trainForm,
-              price: {
-                economy: parseInt(trainForm.price.economy),
-                business: parseInt(trainForm.price.business),
-                first: parseInt(trainForm.price.first)
-              },
-              seats: {
-                total: parseInt(trainForm.seats.total),
-                available: {
-                  economy: parseInt(trainForm.seats.available.economy),
-                  business: parseInt(trainForm.seats.available.business),
-                  first: parseInt(trainForm.seats.available.first)
-                }
-              }
-            }
-          : train
-      )
+  const handleEditTrain = async () => {
+    try {
+      const authData = JSON.parse(localStorage.getItem('lak_auth') || '{}');
+      
+      const trainData = {
+        name: trainForm.name,
+        type: trainForm.type,
+        route: trainForm.route,
+        fromStation: trainForm.fromStation,
+        toStation: trainForm.toStation,
+        departureTime: trainForm.departureTime,
+        arrivalTime: trainForm.arrivalTime,
+        duration: trainForm.duration,
+        distance: parseFloat(trainForm.distance),
+        pricing: {
+          economy: parseFloat(trainForm.pricing.economy),
+          business: parseFloat(trainForm.pricing.business),
+          first: parseFloat(trainForm.pricing.first)
+        },
+        seatInfo: {
+          totalSeats: parseInt(trainForm.seatInfo.totalSeats),
+          availableEconomy: parseInt(trainForm.seatInfo.availableEconomy),
+          availableBusiness: parseInt(trainForm.seatInfo.availableBusiness),
+          availableFirst: parseInt(trainForm.seatInfo.availableFirst)
+        },
+        features: trainForm.features,
+        status: trainForm.status
+      };
+
+      const response = await fetch(`http://localhost:8081/trains/${selectedTrain.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authData.token}`
+        },
+        body: JSON.stringify(trainData)
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update train');
+      }
+
+      await fetchTrains(); // Refresh the list
+      setIsEditModalOpen(false);
+      setSelectedTrain(null);
+    } catch (error) {
+      console.error('Error updating train:', error);
+      alert('Failed to update train: ' + error.message);
+    }
+  };
+
+  const handleDeleteTrain = async () => {
+    try {
+      const authData = JSON.parse(localStorage.getItem('lak_auth') || '{}');
+      
+      const response = await fetch(`http://localhost:8081/trains/${selectedTrain.id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${authData.token}`
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete train');
+      }
+
+      await fetchTrains(); // Refresh the list
+      setIsDeleteModalOpen(false);
+      setSelectedTrain(null);
+    } catch (error) {
+      console.error('Error deleting train:', error);
+      alert('Failed to delete train: ' + error.message);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Trains Management</h1>
+            <p className="text-gray-600 mt-2">Loading trains...</p>
+          </div>
+        </div>
+        <Card>
+          <CardContent className="p-8">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+              <p className="text-gray-600 mt-2">Loading trains...</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     );
-    setIsEditModalOpen(false);
-    setSelectedTrain(null);
-  };
-
-  const handleDeleteTrain = () => {
-    setTrains(prev => prev.filter(train => train.id !== selectedTrain.id));
-    setIsDeleteModalOpen(false);
-    setSelectedTrain(null);
-  };
+  }
 
   return (
     <div className="space-y-6">
@@ -215,81 +362,101 @@ export default function AdminTrainsPage() {
         </Button>
       </div>
 
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <p className="text-red-800">Error: {error}</p>
+          <Button variant="outline" size="sm" onClick={fetchTrains} className="mt-2">
+            Retry
+          </Button>
+        </div>
+      )}
+
       {/* Trains Table */}
       <Card>
         <CardHeader>
-          <CardTitle>All Trains</CardTitle>
+          <CardTitle>All Trains ({trains.length})</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-gray-200">
-                  <th className="text-left py-3 px-4 font-medium text-gray-900">Train</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-900">Route</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-900">Type</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-900">Schedule</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-900">Seats</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-900">Price (from)</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-900">Status</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-900">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {trains.map((train) => (
-                  <tr key={train.id} className="border-b border-gray-100 hover:bg-gray-50">
-                    <td className="py-3 px-4">
-                      <div>
-                        <p className="font-medium text-gray-900">{train.name}</p>
-                        <p className="text-sm text-gray-500">ID: {train.id}</p>
-                      </div>
-                    </td>
-                    <td className="py-3 px-4">
-                      <p className="text-gray-900">{train.route}</p>
-                      <p className="text-sm text-gray-500">{train.distance}</p>
-                    </td>
-                    <td className="py-3 px-4">
-                      <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
-                        {train.type}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4">
-                      <p className="text-gray-900">{train.departureTime} - {train.arrivalTime}</p>
-                      <p className="text-sm text-gray-500">{train.duration}</p>
-                    </td>
-                    <td className="py-3 px-4">
-                      <p className="text-gray-900">{train.seats.available.economy + train.seats.available.business + train.seats.available.first}/{train.seats.total}</p>
-                      <p className="text-sm text-gray-500">Available</p>
-                    </td>
-                    <td className="py-3 px-4">
-                      <p className="font-medium text-gray-900">{formatCurrency(train.price.economy)}</p>
-                    </td>
-                    <td className="py-3 px-4">
-                      <StatusBadge status={train.status} />
-                    </td>
-                    <td className="py-3 px-4">
-                      <div className="flex space-x-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => openEditModal(train)}
-                        >
-                          Edit
-                        </Button>
-                        <Button
-                          variant="danger"
-                          size="sm"
-                          onClick={() => openDeleteModal(train)}
-                        >
-                          Delete
-                        </Button>
-                      </div>
-                    </td>
+          {trains.length === 0 ? (
+            <div className="text-center py-8">
+              <p className="text-gray-500">No trains found. Add your first train to get started.</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-gray-200">
+                    <th className="text-left py-3 px-4 font-medium text-gray-900">Train</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-900">Route</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-900">Type</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-900">Schedule</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-900">Seats</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-900">Price (from)</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-900">Status</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-900">Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {trains.map((train) => {
+                    console.log('Train pricing data for', train.name, ':', train.pricing);
+                    return (
+                    <tr key={train.id} className="border-b border-gray-100 hover:bg-gray-50">
+                      <td className="py-3 px-4">
+                        <div>
+                          <p className="font-medium text-gray-900">{train.name}</p>
+                          <p className="text-sm text-gray-500">ID: {train.id}</p>
+                        </div>
+                      </td>
+                      <td className="py-3 px-4">
+                        <p className="text-gray-900">{train.route}</p>
+                        <p className="text-sm text-gray-500">{train.distance} km</p>
+                      </td>
+                      <td className="py-3 px-4">
+                        <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
+                          {train.type}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4">
+                        <p className="text-gray-900">{train.departureTime} - {train.arrivalTime}</p>
+                        <p className="text-sm text-gray-500">{train.duration}</p>
+                      </td>
+                      <td className="py-3 px-4">
+                        <p className="text-gray-900">
+                          {(train.seatInfo?.availableEconomy || 0) + (train.seatInfo?.availableBusiness || 0) + (train.seatInfo?.availableFirst || 0)}/{train.seatInfo?.totalSeats || 0}
+                        </p>
+                        <p className="text-sm text-gray-500">Available</p>
+                      </td>
+                      <td className="py-3 px-4">
+                        <p className="font-medium text-gray-900">{formatCurrency(train.pricing?.economy || 0)}</p>
+                      </td>
+                      <td className="py-3 px-4">
+                        <StatusBadge status={train.status} />
+                      </td>
+                      <td className="py-3 px-4">
+                        <div className="flex space-x-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => openEditModal(train)}
+                          >
+                            Edit
+                          </Button>
+                          <Button
+                            variant="danger"
+                            size="sm"
+                            onClick={() => openDeleteModal(train)}
+                          >
+                            Delete
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -321,14 +488,14 @@ export default function AdminTrainsPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Input
                 label="From Station"
-                value={trainForm.from}
-                onChange={(e) => handleInputChange('from', e.target.value)}
+                value={trainForm.fromStation}
+                onChange={(e) => handleInputChange('fromStation', e.target.value)}
                 required
               />
               <Input
                 label="To Station"
-                value={trainForm.to}
-                onChange={(e) => handleInputChange('to', e.target.value)}
+                value={trainForm.toStation}
+                onChange={(e) => handleInputChange('toStation', e.target.value)}
                 required
               />
             </div>
@@ -375,8 +542,8 @@ export default function AdminTrainsPage() {
               <Input
                 label="Total Seats"
                 type="number"
-                value={trainForm.seats.total}
-                onChange={(e) => handleInputChange('seats.total', e.target.value)}
+                value={trainForm.seatInfo.totalSeats}
+                onChange={(e) => handleInputChange('seatInfo.totalSeats', e.target.value)}
                 required
               />
             </div>
@@ -385,22 +552,46 @@ export default function AdminTrainsPage() {
               <Input
                 label="Economy Price (LKR)"
                 type="number"
-                value={trainForm.price.economy}
-                onChange={(e) => handleInputChange('price.economy', e.target.value)}
+                value={trainForm.pricing.economy}
+                onChange={(e) => handleInputChange('pricing.economy', e.target.value)}
                 required
               />
               <Input
                 label="Business Price (LKR)"
                 type="number"
-                value={trainForm.price.business}
-                onChange={(e) => handleInputChange('price.business', e.target.value)}
+                value={trainForm.pricing.business}
+                onChange={(e) => handleInputChange('pricing.business', e.target.value)}
                 required
               />
               <Input
                 label="First Class Price (LKR)"
                 type="number"
-                value={trainForm.price.first}
-                onChange={(e) => handleInputChange('price.first', e.target.value)}
+                value={trainForm.pricing.first}
+                onChange={(e) => handleInputChange('pricing.first', e.target.value)}
+                required
+              />
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <Input
+                label="Available Economy Seats"
+                type="number"
+                value={trainForm.seatInfo.availableEconomy}
+                onChange={(e) => handleInputChange('seatInfo.availableEconomy', e.target.value)}
+                required
+              />
+              <Input
+                label="Available Business Seats"
+                type="number"
+                value={trainForm.seatInfo.availableBusiness}
+                onChange={(e) => handleInputChange('seatInfo.availableBusiness', e.target.value)}
+                required
+              />
+              <Input
+                label="Available First Class Seats"
+                type="number"
+                value={trainForm.seatInfo.availableFirst}
+                onChange={(e) => handleInputChange('seatInfo.availableFirst', e.target.value)}
                 required
               />
             </div>
@@ -423,6 +614,16 @@ export default function AdminTrainsPage() {
                   </button>
                 ))}
               </div>
+            </div>
+            
+            <div>
+              <Select
+                label="Status"
+                value={trainForm.status}
+                onChange={(e) => handleInputChange('status', e.target.value)}
+                options={trainStatuses}
+                required
+              />
             </div>
           </div>
         </ModalBody>
@@ -464,14 +665,14 @@ export default function AdminTrainsPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Input
                 label="From Station"
-                value={trainForm.from}
-                onChange={(e) => handleInputChange('from', e.target.value)}
+                value={trainForm.fromStation}
+                onChange={(e) => handleInputChange('fromStation', e.target.value)}
                 required
               />
               <Input
                 label="To Station"
-                value={trainForm.to}
-                onChange={(e) => handleInputChange('to', e.target.value)}
+                value={trainForm.toStation}
+                onChange={(e) => handleInputChange('toStation', e.target.value)}
                 required
               />
             </div>
@@ -518,8 +719,8 @@ export default function AdminTrainsPage() {
               <Input
                 label="Total Seats"
                 type="number"
-                value={trainForm.seats.total}
-                onChange={(e) => handleInputChange('seats.total', e.target.value)}
+                value={trainForm.seatInfo.totalSeats}
+                onChange={(e) => handleInputChange('seatInfo.totalSeats', e.target.value)}
                 required
               />
             </div>
@@ -528,22 +729,46 @@ export default function AdminTrainsPage() {
               <Input
                 label="Economy Price (LKR)"
                 type="number"
-                value={trainForm.price.economy}
-                onChange={(e) => handleInputChange('price.economy', e.target.value)}
+                value={trainForm.pricing.economy}
+                onChange={(e) => handleInputChange('pricing.economy', e.target.value)}
                 required
               />
               <Input
                 label="Business Price (LKR)"
                 type="number"
-                value={trainForm.price.business}
-                onChange={(e) => handleInputChange('price.business', e.target.value)}
+                value={trainForm.pricing.business}
+                onChange={(e) => handleInputChange('pricing.business', e.target.value)}
                 required
               />
               <Input
                 label="First Class Price (LKR)"
                 type="number"
-                value={trainForm.price.first}
-                onChange={(e) => handleInputChange('price.first', e.target.value)}
+                value={trainForm.pricing.first}
+                onChange={(e) => handleInputChange('pricing.first', e.target.value)}
+                required
+              />
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <Input
+                label="Available Economy Seats"
+                type="number"
+                value={trainForm.seatInfo.availableEconomy}
+                onChange={(e) => handleInputChange('seatInfo.availableEconomy', e.target.value)}
+                required
+              />
+              <Input
+                label="Available Business Seats"
+                type="number"
+                value={trainForm.seatInfo.availableBusiness}
+                onChange={(e) => handleInputChange('seatInfo.availableBusiness', e.target.value)}
+                required
+              />
+              <Input
+                label="Available First Class Seats"
+                type="number"
+                value={trainForm.seatInfo.availableFirst}
+                onChange={(e) => handleInputChange('seatInfo.availableFirst', e.target.value)}
                 required
               />
             </div>
@@ -566,6 +791,16 @@ export default function AdminTrainsPage() {
                   </button>
                 ))}
               </div>
+            </div>
+            
+            <div>
+              <Select
+                label="Status"
+                value={trainForm.status}
+                onChange={(e) => handleInputChange('status', e.target.value)}
+                options={trainStatuses}
+                required
+              />
             </div>
           </div>
         </ModalBody>

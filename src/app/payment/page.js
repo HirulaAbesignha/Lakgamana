@@ -8,6 +8,25 @@ import { Input } from '../../components/ui/input';
 import { StatusBadge } from '../../components/ui/badge';
 import { formatCurrency, formatDate, formatTime } from '../../lib/utils';
 
+// Helper functions to map frontend values to backend enums
+const mapGenderToEnum = (gender) => {
+  switch (gender.toLowerCase()) {
+    case 'male': return 'MALE';
+    case 'female': return 'FEMALE';
+    case 'other': return 'OTHER';
+    default: return 'OTHER';
+  }
+};
+
+const mapIdTypeToEnum = (idType) => {
+  switch (idType.toLowerCase()) {
+    case 'national_id': return 'NIC';
+    case 'passport': return 'PASSPORT';
+    case 'driving_license': return 'DRIVING_LICENSE';
+    default: return 'NIC';
+  }
+};
+
 export default function PaymentPage() {
   const router = useRouter();
   const [bookingData, setBookingData] = useState(null);
@@ -65,14 +84,133 @@ export default function PaymentPage() {
   const handlePayment = async () => {
     setIsProcessing(true);
     
-    // Simulate payment processing
-    await new Promise(resolve => setTimeout(resolve, 3000));
-    
-    setIsProcessing(false);
-    setPaymentSuccess(true);
-    
-    // Clear booking data after successful payment
-    localStorage.removeItem('bookingData');
+    try {
+      const authData = JSON.parse(localStorage.getItem('lak_auth') || '{}');
+      
+      if (!authData.token) {
+        router.push('/login');
+        return;
+      }
+
+      // Create booking request
+      const bookingRequest = {
+        trainId: parseInt(bookingData.train.id),
+        departureDate: bookingData.departureDate,
+        seatClass: bookingData.seatClass,
+        adultsCount: bookingData.adultsCount,
+        childrenCount: bookingData.childrenCount,
+        totalAmount: bookingData.totalAmount + 40, // Including fees
+        passengers: bookingData.passengers.map(passenger => ({
+          name: passenger.name,
+          age: parseInt(passenger.age),
+          gender: mapGenderToEnum(passenger.gender),
+          idType: mapIdTypeToEnum(passenger.idType),
+          idNumber: passenger.idNumber
+        }))
+      };
+
+      console.log('Sending booking request:', bookingRequest);
+      console.log('Auth token:', authData.token ? 'Present' : 'Missing');
+      console.log('Original train data:', bookingData.train);
+
+      // Create booking
+      const bookingResponse = await fetch('http://localhost:8081/bookings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authData.token}`
+        },
+        body: JSON.stringify(bookingRequest)
+      });
+
+      console.log('Booking response status:', bookingResponse.status);
+
+      if (!bookingResponse.ok) {
+        const errorData = await bookingResponse.json().catch(() => ({ message: 'Unknown error' }));
+        console.error('Booking creation failed:', errorData);
+        console.error('Response status:', bookingResponse.status);
+        console.error('Response headers:', Object.fromEntries(bookingResponse.headers.entries()));
+        
+        // Show error to user
+        throw new Error(errorData.message || `Failed to create booking: ${bookingResponse.status}`);
+      }
+
+      const bookingResult = await bookingResponse.json();
+      
+      // Create payment
+      const paymentRequest = {
+        bookingId: bookingResult.data.id,
+        amount: bookingRequest.totalAmount,
+        paymentMethod: paymentMethod,
+        paymentDetails: {
+          cardNumber: paymentForm.cardNumber,
+          expiryDate: paymentForm.expiryDate,
+          cvv: paymentForm.cvv,
+          cardHolderName: paymentForm.cardHolderName,
+          upiId: paymentForm.upiId,
+          walletProvider: paymentForm.walletProvider
+        }
+      };
+
+      console.log('Sending payment request:', paymentRequest);
+
+      const paymentResponse = await fetch('http://localhost:8081/payments/process', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authData.token}`
+        },
+        body: JSON.stringify(paymentRequest)
+      });
+
+      if (!paymentResponse.ok) {
+        console.error('Payment processing failed:', paymentResponse.status);
+        // Show error to user
+        throw new Error('Failed to process payment');
+      }
+
+      // Complete payment
+      const paymentResult = await paymentResponse.json();
+      console.log('Payment result:', paymentResult);
+      
+      await fetch(`http://localhost:8081/payments/${paymentResult.data.transactionId}/complete`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authData.token}`
+        }
+      });
+
+      // Confirm booking
+      await fetch(`http://localhost:8081/bookings/${bookingResult.data.id}/confirm`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authData.token}`
+        }
+      });
+
+      setIsProcessing(false);
+      setPaymentSuccess(true);
+      
+      // Clear booking data after successful payment
+      localStorage.removeItem('bookingData');
+    } catch (error) {
+      console.error('Payment error:', error);
+      setIsProcessing(false);
+      
+      // Provide more helpful error messages
+      let errorMessage = 'Payment failed: ';
+      if (error.message.includes('Failed to create booking')) {
+        errorMessage += 'Unable to create booking. This might be because the train is not available or the backend server is not responding properly.';
+      } else if (error.message.includes('Failed to process payment')) {
+        errorMessage += 'Payment processing failed. Please check your payment details and try again.';
+      } else {
+        errorMessage += error.message;
+      }
+      
+      alert(errorMessage);
+    }
   };
 
   if (paymentSuccess) {

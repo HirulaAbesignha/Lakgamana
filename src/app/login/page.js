@@ -59,25 +59,61 @@ export default function LoginPage() {
     
     setIsLoading(true);
     
-    // Simulate API call
     try {
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      // Call the backend login API
+      console.log('Form data:', formData);
+      console.log('Attempting login with:', { email: formData.email, password: formData.password });
       
-      // For demo purposes, accept any email/password combination
-      // In a real app, you would validate against your backend
-      const role = formData.email.includes('admin') ? 'admin' : 'user';
-      const user = role === 'admin'
-        ? { name: 'Admin User', email: formData.email }
-        : { name: 'John Doe', email: formData.email };
+      const requestBody = {
+        email: formData.email,
+        password: formData.password
+      };
+      
+      console.log('Request body:', requestBody);
+      
+      const response = await fetch('http://localhost:8081/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody),
+      });
 
+      console.log('Response status:', response.status);
+      console.log('Response ok:', response.ok);
+
+      const result = await response.json();
+      console.log('Response data:', result);
+
+      if (!response.ok) {
+        console.error('Login failed:', result);
+        throw new Error(result.message || 'Login failed');
+      }
+
+      // Store authentication data
       try {
-        localStorage.setItem('lak_auth', JSON.stringify({ isLoggedIn: true, role, user }));
+        localStorage.setItem('lak_auth', JSON.stringify({ 
+          isLoggedIn: true, 
+          token: result.data.token,
+          refreshToken: result.data.refreshToken,
+          user: result.data.user,
+          role: result.data.user.role?.toLowerCase() || 'user',
+          expiresIn: result.data.expiresIn
+        }));
+        
+        // Trigger storage event to update navbar
+        window.dispatchEvent(new StorageEvent('storage', {
+          key: 'lak_auth',
+          newValue: localStorage.getItem('lak_auth')
+        }));
       } catch {}
 
-      // Redirect based on user type (demo logic)
+      // Redirect based on user role
+      const role = result.data.user.role?.toLowerCase() || 'user';
       router.push(role === 'admin' ? '/admin' : '/tickets');
     } catch (error) {
-      setErrors({ general: 'Login failed. Please try again.' });
+      console.error('Login error:', error);
+      setErrors({ general: error.message || 'Login failed. Please try again.' });
     } finally {
       setIsLoading(false);
     }
@@ -182,14 +218,7 @@ export default function LoginPage() {
                 {isLoading ? 'Signing in...' : 'Sign in'}
               </Button>
 
-              {/* Demo Credentials */}
-              <div className="mt-6 p-4 bg-blue-50 rounded-lg">
-                <h4 className="text-sm font-medium text-blue-900 mb-2">Demo Credentials:</h4>
-                <div className="text-xs text-blue-700 space-y-1">
-                  <p><strong>User:</strong> user@lakgamana.com / password123</p>
-                  <p><strong>Admin:</strong> admin@lakgamana.com / admin123</p>
-                </div>
-              </div>
+
             </form>
           </CardContent>
         </Card>

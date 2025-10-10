@@ -34,7 +34,14 @@ const Navbar = () => {
   ];
 
   const handleLogout = () => {
-    try { localStorage.removeItem('lak_auth'); } catch {}
+    try { 
+      localStorage.removeItem('lak_auth');
+      // Trigger storage event to update navbar
+      window.dispatchEvent(new StorageEvent('storage', {
+        key: 'lak_auth',
+        newValue: null
+      }));
+    } catch {}
     setIsLoggedIn(false);
     setUserRole('user');
     setUserDetails({
@@ -83,20 +90,96 @@ const Navbar = () => {
   };
 
   useEffect(() => {
+    checkAuthStatus();
+    
+    // Listen for storage changes (when user logs in/out in another tab)
+    const handleStorageChange = (e) => {
+      if (e.key === 'lak_auth') {
+        checkAuthStatus();
+      }
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, []);
+
+  const checkAuthStatus = async () => {
     try {
       const raw = localStorage.getItem('lak_auth');
       if (raw) {
         const parsed = JSON.parse(raw);
-        if (parsed && parsed.isLoggedIn) {
-          setIsLoggedIn(true);
-          setUserRole(parsed.role === 'admin' ? 'admin' : 'user');
-          if (parsed.user && parsed.user.name && parsed.user.email) {
-            setUserDetails({ name: parsed.user.name, email: parsed.user.email, avatar: parsed.user.avatar ?? null });
+        if (parsed && parsed.isLoggedIn && parsed.token) {
+          // Fetch fresh user data from API
+          try {
+            const response = await fetch('http://localhost:8081/profile', {
+              method: 'GET',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${parsed.token}`
+              }
+            });
+
+            if (response.ok) {
+              const result = await response.json();
+              const userData = result.data;
+              setIsLoggedIn(true);
+              setUserRole(userData.role === 'ADMIN' ? 'admin' : 'user');
+              setUserDetails({ 
+                name: `${userData.firstName} ${userData.lastName}`, 
+                email: userData.email, 
+                avatar: null 
+              });
+            } else {
+              // Token is invalid, clear auth
+              localStorage.removeItem('lak_auth');
+              setIsLoggedIn(false);
+              setUserRole('user');
+              setUserDetails({
+                name: 'John Doe',
+                email: 'john.doe@example.com',
+                avatar: null
+              });
+            }
+          } catch (error) {
+            // API call failed, use cached data as fallback
+            setIsLoggedIn(true);
+            setUserRole(parsed.role === 'admin' ? 'admin' : 'user');
+            if (parsed.user && parsed.user.name && parsed.user.email) {
+              setUserDetails({ name: parsed.user.name, email: parsed.user.email, avatar: parsed.user.avatar ?? null });
+            }
           }
+        } else {
+          setIsLoggedIn(false);
+          setUserRole('user');
+          setUserDetails({
+            name: 'John Doe',
+            email: 'john.doe@example.com',
+            avatar: null
+          });
         }
+      } else {
+        setIsLoggedIn(false);
+        setUserRole('user');
+        setUserDetails({
+          name: 'John Doe',
+          email: 'john.doe@example.com',
+          avatar: null
+        });
       }
-    } catch {}
-  }, []);
+    } catch (error) {
+      console.error('Error checking auth status:', error);
+      setIsLoggedIn(false);
+      setUserRole('user');
+      setUserDetails({
+        name: 'John Doe',
+        email: 'john.doe@example.com',
+        avatar: null
+      });
+    }
+  };
 
   return (
     <nav className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-40">
