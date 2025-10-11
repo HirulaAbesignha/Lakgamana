@@ -146,6 +146,25 @@ public class PaymentController {
         try {
             Page<Payment> payments = paymentService.findPaymentsWithFilters(userName, transactionId, bookingId, status, method, pageable);
             Page<PaymentResponse> paymentResponses = payments.map(PaymentResponse::fromEntity);
+            log.info("Retrieved {} payments for admin", payments.getTotalElements());
+            return ResponseEntity.ok(ApiResponse.success("Payments retrieved", paymentResponses));
+        } catch (Exception e) {
+            log.error("Failed to get all payments", e);
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error("Failed to get payments: " + e.getMessage()));
+        }
+    }
+
+    @GetMapping("/admin/all")
+    @Operation(summary = "Get all payments without pagination (Admin)", description = "Get all payments as a simple list")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<List<PaymentResponse>>> getAllPaymentsSimple() {
+        try {
+            List<Payment> payments = paymentService.findAllPayments();
+            List<PaymentResponse> paymentResponses = payments.stream()
+                    .map(PaymentResponse::fromEntity)
+                    .toList();
+            log.info("Retrieved {} payments for admin (simple list)", payments.size());
             return ResponseEntity.ok(ApiResponse.success("Payments retrieved", paymentResponses));
         } catch (Exception e) {
             log.error("Failed to get all payments", e);

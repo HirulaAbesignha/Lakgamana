@@ -117,6 +117,33 @@ export default function AdminReservationsPage() {
     setSelectedBooking(null);
   };
 
+  const handleConfirmBooking = async (booking) => {
+    if (confirm(`Are you sure you want to confirm booking ${booking.bookingId}?`)) {
+      try {
+        const authData = JSON.parse(localStorage.getItem('lak_auth') || '{}');
+        
+        const response = await fetch(`http://localhost:8081/bookings/${booking.id}/confirm`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${authData.token}`
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to confirm booking');
+        }
+
+        // Refresh bookings list
+        await fetchBookings();
+        alert('Booking confirmed successfully!');
+      } catch (error) {
+        console.error('Error confirming booking:', error);
+        setError(error.message);
+      }
+    }
+  };
+
   const getStatusColor = (status) => {
     switch (status) {
       case 'CONFIRMED': return 'success';
@@ -264,6 +291,15 @@ export default function AdminReservationsPage() {
                         >
                           View
                         </Button>
+                        {booking.status === 'PENDING' && (
+                          <Button
+                            variant="success"
+                            size="sm"
+                            onClick={() => handleConfirmBooking(booking)}
+                          >
+                            Done
+                          </Button>
+                        )}
                         {booking.status === 'CONFIRMED' && (
                           <Button
                             variant="danger"

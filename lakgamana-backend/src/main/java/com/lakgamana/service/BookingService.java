@@ -4,10 +4,12 @@ import com.lakgamana.dto.request.BookingRequest;
 import com.lakgamana.dto.request.PassengerRequest;
 import com.lakgamana.entity.Booking;
 import com.lakgamana.entity.Passenger;
+import com.lakgamana.entity.Payment;
 import com.lakgamana.entity.Train;
 import com.lakgamana.entity.User;
 import com.lakgamana.entity.enums.BookingStatus;
 import com.lakgamana.repository.BookingRepository;
+import com.lakgamana.repository.PaymentRepository;
  
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -23,13 +25,15 @@ import java.util.UUID;
 public class BookingService {
 
     private final BookingRepository bookingRepository;
+    private final PaymentRepository paymentRepository;
     private final UserService userService;
     private final TrainService trainService;
 
     private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(BookingService.class);
 
-    public BookingService(BookingRepository bookingRepository, UserService userService, TrainService trainService) {
+    public BookingService(BookingRepository bookingRepository, PaymentRepository paymentRepository, UserService userService, TrainService trainService) {
         this.bookingRepository = bookingRepository;
+        this.paymentRepository = paymentRepository;
         this.userService = userService;
         this.trainService = trainService;
     }
@@ -173,6 +177,46 @@ public class BookingService {
         // Note: This is a simplified approach. In production, you might want to track seat numbers
         
         return bookingRepository.save(booking);
+    }
+
+    @Transactional
+    public String processRefund(com.lakgamana.dto.request.RefundRequest refundRequest) {
+        // Find booking by bookingId
+        Booking booking = findByBookingId(refundRequest.getBookingId());
+        
+        // Validate booking can be refunded (allow both PENDING and CONFIRMED for ongoing tickets)
+        if (booking.getStatus() != BookingStatus.CONFIRMED && booking.getStatus() != BookingStatus.PENDING) {
+            throw new IllegalArgumentException("Only ongoing bookings can be refunded");
+        }
+        
+        // Check if booking is ongoing (allow refunds for today and future dates)
+        if (booking.getDepartureDate().isBefore(java.time.LocalDate.now().minusDays(1))) {
+            throw new IllegalArgumentException("Cannot refund bookings that departed more than 1 day ago");
+        }
+        
+        // Find the payment for this booking
+        List<Payment> payments = paymentRepository.findByBookingId(booking.getId());
+        if (payments.isEmpty()) {
+            throw new IllegalArgumentException("No payment found for this booking");
+        }
+        Payment payment = payments.get(0); // Get the first payment
+        
+        // Validate payment can be refunded
+        if (payment.getStatus() != com.lakgamana.entity.enums.PaymentStatus.COMPLETED) {
+            throw new IllegalArgumentException("Only completed payments can be refunded");
+        }
+        
+        // Process refund
+        payment.processRefund(payment.getAmount());
+        paymentRepository.save(payment);
+        
+        // Cancel the booking
+        booking.setStatus(BookingStatus.CANCELLED);
+        booking.setCancellationReason("Refund requested: " + refundRequest.getReason());
+        booking.setCancellationDate(java.time.LocalDateTime.now());
+        bookingRepository.save(booking);
+        
+        return "Refund of LKR " + payment.getAmount() + " processed successfully";
     }
 
     public void deleteBooking(Long id) {

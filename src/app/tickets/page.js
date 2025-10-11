@@ -16,6 +16,7 @@ export default function MyTicketsPage() {
   const [isRescheduleModalOpen, setIsRescheduleModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState(false);
+  const [isRefundModalOpen, setIsRefundModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -80,6 +81,11 @@ export default function MyTicketsPage() {
     setIsFeedbackModalOpen(true);
   };
 
+  const handleRefund = (ticket) => {
+    setSelectedTicket(ticket);
+    setIsRefundModalOpen(true);
+  };
+
   const handleSubmitFeedback = async (feedbackData) => {
     if (selectedTicket) {
       try {
@@ -117,6 +123,50 @@ export default function MyTicketsPage() {
         return true;
       } catch (error) {
         console.error('Error submitting feedback:', error);
+        setError(error.message);
+        return false;
+      }
+    }
+    return false;
+  };
+
+  const handleSubmitRefund = async (refundData) => {
+    if (selectedTicket) {
+      try {
+        const authData = JSON.parse(localStorage.getItem('lak_auth') || '{}');
+        
+        const response = await fetch('http://localhost:8081/bookings/refund', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${authData.token}`
+          },
+          body: JSON.stringify({
+            bookingId: selectedTicket.bookingId,
+            accountNumber: refundData.accountNumber,
+            bankName: refundData.bankName,
+            accountHolderName: refundData.accountHolderName,
+            reason: refundData.reason
+          })
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          console.error('Refund API Error:', errorData);
+          throw new Error(errorData.message || `Failed to process refund: ${response.status} ${response.statusText}`);
+        }
+
+        const result = await response.json();
+        alert('Refund processed successfully! ' + result.data);
+        
+        // Refresh tickets list
+        await fetchMyTickets();
+
+        setIsRefundModalOpen(false);
+        setSelectedTicket(null);
+        return true;
+      } catch (error) {
+        console.error('Error processing refund:', error);
         setError(error.message);
         return false;
       }
@@ -221,8 +271,17 @@ export default function MyTicketsPage() {
     switch (status) {
       case 'confirmed': return 'success';
       case 'cancelled': return 'error';
-      case 'pending': return 'warning';
+      case 'pending': return 'success'; // Changed from warning to success for ongoing
       default: return 'default';
+    }
+  };
+
+  const getStatusText = (status) => {
+    switch (status) {
+      case 'confirmed': return 'Confirmed';
+      case 'cancelled': return 'Cancelled';
+      case 'pending': return 'Ongoing'; // Changed from Pending to Ongoing
+      default: return status;
     }
   };
 
@@ -299,7 +358,9 @@ export default function MyTicketsPage() {
                             </h3>
                             <p className="text-gray-600">{ticket.train.fromStation} → {ticket.train.toStation}</p>
                           </div>
-                          <StatusBadge status={getStatusColor(ticket.status.toLowerCase())} />
+                          <StatusBadge status={getStatusColor(ticket.status.toLowerCase())}>
+                            {getStatusText(ticket.status)}
+                          </StatusBadge>
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
@@ -366,6 +427,20 @@ export default function MyTicketsPage() {
                             </svg>
                             Feedback
                           </Button>
+
+                          {(ticket.status === 'PENDING') && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleRefund(ticket)}
+                              className="w-full lg:w-auto bg-red-50 border-red-200 text-red-700 hover:bg-red-100"
+                            >
+                              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+                              </svg>
+                              Request Refund
+                            </Button>
+                          )}
                           
                           {(ticket.status === 'PENDING') && (
                             <>
@@ -643,6 +718,20 @@ export default function MyTicketsPage() {
           />
         </ModalBody>
       </Modal>
+
+      {/* Refund Modal */}
+      <Modal isOpen={isRefundModalOpen} onClose={() => setIsRefundModalOpen(false)}>
+        <ModalHeader>
+          <h3 className="text-lg font-semibold text-gray-900">Request Refund</h3>
+        </ModalHeader>
+        <ModalBody>
+          <RefundForm 
+            ticket={selectedTicket}
+            onSubmit={handleSubmitRefund}
+            onCancel={() => setIsRefundModalOpen(false)}
+          />
+        </ModalBody>
+      </Modal>
     </div>
   );
 }
@@ -773,6 +862,159 @@ function FeedbackForm({ ticket, onSubmit, onCancel }) {
         </Button>
         <Button type="submit">
           Submit Feedback
+        </Button>
+      </div>
+    </form>
+  );
+}
+
+// Refund Form Component
+function RefundForm({ ticket, onSubmit, onCancel }) {
+  const [formData, setFormData] = useState({
+    accountNumber: '',
+    bankName: '',
+    accountHolderName: '',
+    reason: ''
+  });
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!formData.accountNumber.trim() || !formData.bankName.trim() || 
+        !formData.accountHolderName.trim() || !formData.reason.trim()) {
+      alert('Please fill in all required fields');
+      return;
+    }
+    
+    const success = await onSubmit(formData);
+    if (success) {
+      setFormData({ accountNumber: '', bankName: '', accountHolderName: '', reason: '' });
+    }
+  };
+
+  const handleChange = (field, value) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-6">
+      {ticket && (
+        <div className="bg-gray-50 p-4 rounded-lg">
+          <h4 className="font-medium text-gray-900 mb-2">Ticket Details</h4>
+          <div className="grid grid-cols-2 gap-4 text-sm">
+            <div>
+              <span className="text-gray-500">Booking ID:</span>
+              <span className="ml-2 font-medium">{ticket.bookingId}</span>
+            </div>
+            <div>
+              <span className="text-gray-500">Amount:</span>
+              <span className="ml-2 font-medium">LKR {ticket.totalAmount}</span>
+            </div>
+            <div>
+              <span className="text-gray-500">Train:</span>
+              <span className="ml-2 font-medium">{ticket.train.name}</span>
+            </div>
+            <div>
+              <span className="text-gray-500">Date:</span>
+              <span className="ml-2 font-medium">{new Date(ticket.departureDate).toLocaleDateString()}</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Account Number *
+          </label>
+          <input
+            type="text"
+            value={formData.accountNumber}
+            onChange={(e) => handleChange('accountNumber', e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder="Enter your account number"
+            required
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Bank Name *
+          </label>
+          <input
+            type="text"
+            value={formData.bankName}
+            onChange={(e) => handleChange('bankName', e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder="Enter your bank name"
+            required
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Account Holder Name *
+          </label>
+          <input
+            type="text"
+            value={formData.accountHolderName}
+            onChange={(e) => handleChange('accountHolderName', e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder="Enter account holder name"
+            required
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Reason for Refund *
+          </label>
+          <textarea
+            value={formData.reason}
+            onChange={(e) => handleChange('reason', e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder="Please explain why you need a refund"
+            rows={3}
+            required
+          />
+        </div>
+      </div>
+
+      <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4">
+        <div className="flex">
+          <div className="flex-shrink-0">
+            <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+            </svg>
+          </div>
+          <div className="ml-3">
+            <h3 className="text-sm font-medium text-yellow-800">
+              Important Notice
+            </h3>
+            <div className="mt-2 text-sm text-yellow-700">
+              <p>
+                • Refund will be processed to the account details provided above<br/>
+                • Processing time: 3-5 business days<br/>
+                • Your booking will be cancelled immediately after refund approval<br/>
+                • Refund amount: LKR {ticket?.totalAmount || 0}
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex justify-end space-x-3">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={onCancel}
+        >
+          Cancel
+        </Button>
+        <Button
+          type="submit"
+          className="bg-red-600 hover:bg-red-700 text-white"
+        >
+          Request Refund
         </Button>
       </div>
     </form>

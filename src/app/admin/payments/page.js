@@ -1,17 +1,59 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card';
 import { Input, Select } from '../../../components/ui/input';
 import { StatusBadge } from '../../../components/ui/badge';
-import paymentsData from '../../../data/payments.json';
 import { formatCurrency, formatDate } from '../../../lib/utils';
 
 export default function AdminPaymentsPage() {
-  const [payments] = useState(paymentsData);
+  const router = useRouter();
+  const [payments, setPayments] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterMethod, setFilterMethod] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
+
+  useEffect(() => {
+    fetchPayments();
+  }, []);
+
+  const fetchPayments = async () => {
+    try {
+      const authData = JSON.parse(localStorage.getItem('lak_auth') || '{}');
+      console.log('Fetching payments with auth data:', authData);
+      
+      const response = await fetch('http://localhost:8081/payments/admin/all', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authData.token}`
+        }
+      });
+
+      console.log('Payments API Response status:', response.status, response.statusText);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Payments API Error Response:', errorText);
+        throw new Error(`Failed to fetch payments: ${response.status} ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      console.log('Payments API Response:', result);
+      // Handle simple list response - payments are directly in result.data
+      const paymentsData = result.data || [];
+      console.log('Extracted payments data:', paymentsData);
+      setPayments(Array.isArray(paymentsData) ? paymentsData : []);
+    } catch (error) {
+      console.error('Error fetching payments:', error);
+      setError(error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const statusOptions = [
     { value: 'all', label: 'All Status' },
@@ -29,13 +71,13 @@ export default function AdminPaymentsPage() {
     { value: 'bank_transfer', label: 'Bank Transfer' }
   ];
 
-  const filteredPayments = payments.filter(payment => {
-    const matchesStatus = filterStatus === 'all' || payment.status === filterStatus;
-    const matchesMethod = filterMethod === 'all' || payment.method === filterMethod;
+  const filteredPayments = (Array.isArray(payments) ? payments : []).filter(payment => {
+    const matchesStatus = filterStatus === 'all' || payment.status?.toLowerCase() === filterStatus;
+    const matchesMethod = filterMethod === 'all' || payment.method?.toLowerCase() === filterMethod;
     const matchesSearch = 
-      payment.userName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      payment.transactionId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      payment.bookingId.toLowerCase().includes(searchTerm.toLowerCase());
+      (payment.user?.firstName + ' ' + payment.user?.lastName).toLowerCase().includes(searchTerm.toLowerCase()) ||
+      payment.transactionId?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      payment.booking?.bookingId?.toLowerCase().includes(searchTerm.toLowerCase());
     return matchesStatus && matchesMethod && matchesSearch;
   });
 
@@ -48,13 +90,46 @@ export default function AdminPaymentsPage() {
     }
   };
 
-  const totalRevenue = payments
+  // Calculate total ticket amount (all completed payments)
+  const totalTicketAmount = (Array.isArray(payments) ? payments : [])
     .filter(payment => payment.status === 'completed')
-    .reduce((sum, payment) => sum + payment.amount, 0);
+    .reduce((sum, payment) => sum + (payment.amount || 0), 0);
 
-  const totalRefunds = payments
+  // Calculate total refunds
+  const totalRefunds = (Array.isArray(payments) ? payments : [])
     .filter(payment => payment.status === 'refunded')
-    .reduce((sum, payment) => sum + (payment.refundAmount || payment.amount), 0);
+    .reduce((sum, payment) => sum + (payment.refundAmount || payment.amount || 0), 0);
+
+  // Total Revenue = Total Ticket Amount - Total Refunds
+  const totalRevenue = totalTicketAmount - totalRefunds;
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading payments...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-red-600 text-xl mb-4">⚠️ Error Loading Payments</div>
+          <p className="text-gray-600 mb-4">{error}</p>
+          <button 
+            onClick={fetchPayments}
+            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -72,6 +147,9 @@ export default function AdminPaymentsPage() {
               <div>
                 <p className="text-sm font-medium text-gray-600">Total Revenue</p>
                 <p className="text-2xl font-bold text-green-600">{formatCurrency(totalRevenue)}</p>
+                <p className="text-xs text-gray-500 mt-1">
+                  {formatCurrency(totalTicketAmount)} - {formatCurrency(totalRefunds)} refunds
+                </p>
               </div>
               <div className="p-3 bg-green-100 rounded-lg">
                 <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -171,12 +249,12 @@ export default function AdminPaymentsPage() {
                     </td>
                     <td className="py-3 px-4">
                       <div>
-                        <p className="font-medium text-gray-900">{payment.userName}</p>
-                        <p className="text-sm text-gray-500">ID: {payment.userId}</p>
+                        <p className="font-medium text-gray-900">{payment.user?.firstName} {payment.user?.lastName}</p>
+                        <p className="text-sm text-gray-500">ID: {payment.user?.userId}</p>
                       </div>
                     </td>
                     <td className="py-3 px-4">
-                      <p className="text-gray-900">{payment.bookingId}</p>
+                      <p className="text-gray-900">{payment.booking?.bookingId}</p>
                     </td>
                     <td className="py-3 px-4">
                       <p className="font-medium text-gray-900">{formatCurrency(payment.amount)}</p>

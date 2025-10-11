@@ -194,4 +194,18 @@ public class BookingController {
         public List<BookingResponse> getRecentBookings() { return recentBookings; }
         public void setRecentBookings(List<BookingResponse> recentBookings) { this.recentBookings = recentBookings; }
     }
+
+    @PostMapping("/refund")
+    @Operation(summary = "Request refund for booking", description = "Request refund for an ongoing booking")
+    @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
+    public ResponseEntity<ApiResponse<String>> requestRefund(@RequestBody com.lakgamana.dto.request.RefundRequest refundRequest) {
+        try {
+            String result = bookingService.processRefund(refundRequest);
+            return ResponseEntity.ok(ApiResponse.success("Refund processed successfully", result));
+        } catch (Exception e) {
+            log.error("Failed to process refund", e);
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error("Failed to process refund: " + e.getMessage()));
+        }
+    }
 }
