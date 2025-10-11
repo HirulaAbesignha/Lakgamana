@@ -10,7 +10,7 @@ import jakarta.validation.constraints.Size;
 
 public class FeedbackRequest {
 
-    private Long bookingId;
+    private String bookingId;
 
     private Long trainId;
 
@@ -31,8 +31,8 @@ public class FeedbackRequest {
     private FeedbackCategory category;
 
     public FeedbackRequest() {}
-    public Long getBookingId() { return bookingId; }
-    public void setBookingId(Long bookingId) { this.bookingId = bookingId; }
+    public String getBookingId() { return bookingId; }
+    public void setBookingId(String bookingId) { this.bookingId = bookingId; }
     public Long getTrainId() { return trainId; }
     public void setTrainId(Long trainId) { this.trainId = trainId; }
     public Integer getRating() { return rating; }

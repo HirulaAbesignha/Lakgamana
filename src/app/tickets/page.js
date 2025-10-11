@@ -15,6 +15,7 @@ export default function MyTicketsPage() {
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
   const [isRescheduleModalOpen, setIsRescheduleModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -74,12 +75,71 @@ export default function MyTicketsPage() {
     setIsEditModalOpen(true);
   };
 
+  const handleFeedback = (ticket) => {
+    setSelectedTicket(ticket);
+    setIsFeedbackModalOpen(true);
+  };
+
+  const handleSubmitFeedback = async (feedbackData) => {
+    if (selectedTicket) {
+      try {
+        const authData = JSON.parse(localStorage.getItem('lak_auth') || '{}');
+        
+        const response = await fetch('http://localhost:8081/feedback', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${authData.token}`
+          },
+          body: JSON.stringify({
+            bookingId: selectedTicket.bookingId,
+            rating: feedbackData.rating,
+            title: feedbackData.title,
+            comment: feedbackData.comment,
+            category: feedbackData.category
+          })
+        });
+
+        if (!response.ok) {
+          let backendMessage = '';
+          try {
+            const errJson = await response.json();
+            backendMessage = errJson?.message || JSON.stringify(errJson);
+          } catch (_) {
+            backendMessage = await response.text();
+          }
+          setError(backendMessage || 'Failed to submit feedback');
+          return false;
+        }
+
+        setIsFeedbackModalOpen(false);
+        setSelectedTicket(null);
+        return true;
+      } catch (error) {
+        console.error('Error submitting feedback:', error);
+        setError(error.message);
+        return false;
+      }
+    }
+    return false;
+  };
+
   const handleDeleteTicket = async (ticket) => {
+    if (ticket?.status !== 'PENDING') {
+      setError('Only pending bookings can be cancelled/deleted.');
+      return;
+    }
     if (confirm('Are you sure you want to delete this booking? This action cannot be undone.')) {
       try {
         const authData = JSON.parse(localStorage.getItem('lak_auth') || '{}');
         
-        const response = await fetch(`http://localhost:8081/bookings/${selectedTicket.bookingId}/cancel?reason=Deleted by user`, {
+        const bookingId = ticket?.bookingId || ticket?.id;
+        if (!bookingId) {
+          setError('Missing booking id for this ticket');
+          return;
+        }
+        
+        const response = await fetch(`http://localhost:8081/bookings/${bookingId}/cancel?reason=Deleted by user`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
@@ -88,7 +148,15 @@ export default function MyTicketsPage() {
         });
 
         if (!response.ok) {
-          throw new Error('Failed to delete booking');
+          let backendMessage = '';
+          try {
+            const errJson = await response.json();
+            backendMessage = errJson?.message || JSON.stringify(errJson);
+          } catch (_) {
+            backendMessage = await response.text();
+          }
+          setError(backendMessage || 'Failed to delete booking');
+          return;
         }
 
         // Refresh tickets list
@@ -101,6 +169,12 @@ export default function MyTicketsPage() {
   };
 
   const confirmCancel = async () => {
+    if (selectedTicket?.status !== 'PENDING') {
+      setError('Only pending bookings can be cancelled.');
+      setIsCancelModalOpen(false);
+      setSelectedTicket(null);
+      return;
+    }
     if (selectedTicket) {
       try {
         const authData = JSON.parse(localStorage.getItem('lak_auth') || '{}');
@@ -114,7 +188,17 @@ export default function MyTicketsPage() {
         });
 
         if (!response.ok) {
-          throw new Error('Failed to cancel booking');
+          let backendMessage = '';
+          try {
+            const errJson = await response.json();
+            backendMessage = errJson?.message || JSON.stringify(errJson);
+          } catch (_) {
+            backendMessage = await response.text();
+          }
+          setError(backendMessage || 'Failed to cancel booking');
+          setIsCancelModalOpen(false);
+          setSelectedTicket(null);
+          return;
         }
 
         // Refresh tickets list
@@ -270,8 +354,20 @@ export default function MyTicketsPage() {
                             </svg>
                             Download PDF
                           </Button>
+
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleFeedback(ticket)}
+                            className="w-full lg:w-auto"
+                          >
+                            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                            </svg>
+                            Feedback
+                          </Button>
                           
-                          {(ticket.status === 'CONFIRMED' || ticket.status === 'PENDING') && (
+                          {(ticket.status === 'PENDING') && (
                             <>
                               <Button
                                 variant="outline"
@@ -533,6 +629,152 @@ export default function MyTicketsPage() {
           </Button>
         </ModalFooter>
       </Modal>
+
+      {/* Feedback Modal */}
+      <Modal isOpen={isFeedbackModalOpen} onClose={() => setIsFeedbackModalOpen(false)}>
+        <ModalHeader>
+          <h3 className="text-lg font-semibold text-gray-900">Submit Feedback</h3>
+        </ModalHeader>
+        <ModalBody>
+          <FeedbackForm 
+            ticket={selectedTicket}
+            onSubmit={handleSubmitFeedback}
+            onCancel={() => setIsFeedbackModalOpen(false)}
+          />
+        </ModalBody>
+      </Modal>
     </div>
+  );
+}
+
+// Feedback Form Component
+function FeedbackForm({ ticket, onSubmit, onCancel }) {
+  const [formData, setFormData] = useState({
+    rating: 5,
+    title: '',
+    comment: '',
+    category: 'SERVICE_QUALITY'
+  });
+
+  const categories = [
+    { value: 'SERVICE_QUALITY', label: 'Service Quality' },
+    { value: 'CLEANLINESS', label: 'Cleanliness' },
+    { value: 'PUNCTUALITY', label: 'Punctuality' },
+    { value: 'STAFF_BEHAVIOR', label: 'Staff Behavior' },
+    { value: 'FOOD_QUALITY', label: 'Food Quality' },
+    { value: 'OTHER', label: 'Other' }
+  ];
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!formData.title.trim() || !formData.comment.trim()) {
+      alert('Please fill in all required fields');
+      return;
+    }
+    
+    const success = await onSubmit(formData);
+    if (success) {
+      setFormData({ rating: 5, title: '', comment: '', category: 'SERVICE_QUALITY' });
+    }
+  };
+
+  const handleChange = (field, value) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      {ticket && (
+        <div className="bg-gray-50 p-3 rounded-lg mb-4">
+          <p className="text-sm text-gray-600">
+            <strong>Booking:</strong> {ticket.bookingId} | 
+            <strong> Train:</strong> {ticket.train?.name || 'N/A'} | 
+            <strong> Date:</strong> {formatDate(ticket.departureDate)}
+          </p>
+        </div>
+      )}
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          Rating *
+        </label>
+        <div className="flex space-x-1">
+          {[1, 2, 3, 4, 5].map((star) => (
+            <button
+              key={star}
+              type="button"
+              onClick={() => handleChange('rating', star)}
+              className={`text-2xl ${
+                star <= formData.rating 
+                  ? 'text-yellow-400' 
+                  : 'text-gray-300 hover:text-yellow-400'
+              }`}
+            >
+              ★
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          Category *
+        </label>
+        <select
+          value={formData.category}
+          onChange={(e) => handleChange('category', e.target.value)}
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          required
+        >
+          {categories.map(category => (
+            <option key={category.value} value={category.value}>
+              {category.label}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          Title *
+        </label>
+        <input
+          type="text"
+          value={formData.title}
+          onChange={(e) => handleChange('title', e.target.value)}
+          placeholder="Brief title for your feedback"
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          maxLength={200}
+          required
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          Comment *
+        </label>
+        <textarea
+          value={formData.comment}
+          onChange={(e) => handleChange('comment', e.target.value)}
+          placeholder="Share your detailed feedback..."
+          rows={4}
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          maxLength={1000}
+          required
+        />
+        <p className="text-xs text-gray-500 mt-1">
+          {formData.comment.length}/1000 characters
+        </p>
+      </div>
+
+      <div className="flex justify-end space-x-3 pt-4">
+        <Button type="button" variant="outline" onClick={onCancel}>
+          Cancel
+        </Button>
+        <Button type="submit">
+          Submit Feedback
+        </Button>
+      </div>
+    </form>
   );
 }

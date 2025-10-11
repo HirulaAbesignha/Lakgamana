@@ -93,13 +93,15 @@ export default function PaymentPage() {
       }
 
       // Create booking request
+      const totals = computeBookingTotals(bookingData);
+
       const bookingRequest = {
         trainId: parseInt(bookingData.train.id),
         departureDate: bookingData.departureDate,
         seatClass: bookingData.seatClass,
         adultsCount: bookingData.adultsCount,
         childrenCount: bookingData.childrenCount,
-        totalAmount: bookingData.totalAmount + 40, // Including fees
+        totalAmount: totals.grand,
         passengers: bookingData.passengers.map(passenger => ({
           name: passenger.name,
           age: parseInt(passenger.age),
@@ -140,16 +142,17 @@ export default function PaymentPage() {
       // Create payment
       const paymentRequest = {
         bookingId: bookingResult.data.id,
-        amount: bookingRequest.totalAmount,
-        paymentMethod: paymentMethod,
-        paymentDetails: {
-          cardNumber: paymentForm.cardNumber,
-          expiryDate: paymentForm.expiryDate,
-          cvv: paymentForm.cvv,
-          cardHolderName: paymentForm.cardHolderName,
-          upiId: paymentForm.upiId,
-          walletProvider: paymentForm.walletProvider
-        }
+        method: mapPaymentMethodToEnum(paymentMethod),
+        amount: Number(bookingRequest.totalAmount),
+        currency: 'LKR',
+        // flat optional fields (backend validates by size only)
+        cardNumber: paymentForm.cardNumber,
+        expiryDate: paymentForm.expiryDate,
+        cvv: paymentForm.cvv,
+        cardHolderName: paymentForm.cardHolderName,
+        upiId: paymentForm.upiId,
+        walletProvider: paymentForm.walletProvider,
+        bankName: paymentForm.bankName,
       };
 
       console.log('Sending payment request:', paymentRequest);
@@ -164,9 +167,16 @@ export default function PaymentPage() {
       });
 
       if (!paymentResponse.ok) {
-        console.error('Payment processing failed:', paymentResponse.status);
+        let backendMessage = '';
+        try {
+          const errJson = await paymentResponse.json();
+          backendMessage = errJson?.message || JSON.stringify(errJson);
+        } catch (_) {
+          backendMessage = await paymentResponse.text();
+        }
+        console.error('Payment processing failed:', paymentResponse.status, backendMessage);
         // Show error to user
-        throw new Error('Failed to process payment');
+        throw new Error(backendMessage || 'Failed to process payment');
       }
 
       // Complete payment
@@ -297,6 +307,36 @@ export default function PaymentPage() {
     }
   ];
 
+  const getPrice = (train, seat) => {
+    const pricing = train?.pricing || {};
+    const map = {
+      economy: pricing.economy ?? pricing.economyPrice ?? train?.economy ?? train?.economyPrice ?? 0,
+      business: pricing.business ?? pricing.businessPrice ?? train?.business ?? train?.businessPrice ?? 0,
+      first: pricing.first ?? pricing.firstPrice ?? train?.first ?? train?.firstClassPrice ?? 0,
+    };
+    const n = Number(map[seat]);
+    return Number.isFinite(n) ? n : 0;
+  };
+
+  const computeBookingTotals = (data) => {
+    const unit = getPrice(data.train, data.seatClass);
+    const adults = Number(data.adultsCount || 0);
+    const children = Number(data.childrenCount || 0);
+    const childUnit = Math.round(unit / 2);
+    const items = unit * adults + childUnit * children;
+    const fee = 40;
+    const taxRate = 0.10; // 10% tax
+    const tax = Math.round((items + fee) * taxRate);
+    return { unit, childUnit, items, fee, tax, grand: items + fee + tax };
+  };
+
+  const mapPaymentMethodToEnum = (m) => {
+    if (!m) return 'CREDIT_CARD';
+    const v = String(m).toUpperCase().replace(/\s+/g,'_');
+    if (['CREDIT_CARD','DEBIT_CARD','UPI','NET_BANKING','WALLET'].includes(v)) return v;
+    return 'CREDIT_CARD';
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="container-custom">
@@ -347,25 +387,25 @@ export default function PaymentPage() {
                     <div className="border-t pt-4">
                       <div className="space-y-2">
                         <div className="flex justify-between text-sm">
-                          <span>Adults ({bookingData.adultsCount} × {formatCurrency(bookingData.train.price[bookingData.seatClass])})</span>
-                          <span>{formatCurrency(bookingData.train.price[bookingData.seatClass] * (bookingData.adultsCount || 0))}</span>
+                          <span>Adults ({bookingData.adultsCount} × {formatCurrency(computeBookingTotals(bookingData).unit)})</span>
+                          <span>{formatCurrency(computeBookingTotals(bookingData).unit * (bookingData.adultsCount || 0))}</span>
                         </div>
                         <div className="flex justify-between text-sm">
-                          <span>Children ({bookingData.childrenCount} × {formatCurrency(Math.round(bookingData.train.price[bookingData.seatClass] / 2))})</span>
-                          <span>{formatCurrency(Math.round(bookingData.train.price[bookingData.seatClass] / 2) * (bookingData.childrenCount || 0))}</span>
+                          <span>Children ({bookingData.childrenCount} × {formatCurrency(computeBookingTotals(bookingData).childUnit)})</span>
+                          <span>{formatCurrency(computeBookingTotals(bookingData).childUnit * (bookingData.childrenCount || 0))}</span>
                         </div>
                         <div className="flex justify-between text-sm">
                           <span>Service Fee</span>
-                          <span>{formatCurrency(25)}</span>
+                          <span>{formatCurrency(computeBookingTotals(bookingData).fee)}</span>
                         </div>
                         <div className="flex justify-between text-sm">
-                          <span>Taxes</span>
-                          <span>{formatCurrency(15)}</span>
+                          <span>Tax (10%)</span>
+                          <span>{formatCurrency(computeBookingTotals(bookingData).tax)}</span>
                         </div>
                         <div className="border-t pt-2">
                           <div className="flex justify-between font-semibold">
-                            <span>Total Amount</span>
-                            <span className="text-lg">{formatCurrency(bookingData.totalAmount + 40)}</span>
+                            <span>Total</span>
+                            <span className="text-lg">{formatCurrency(computeBookingTotals(bookingData).grand)}</span>
                           </div>
                         </div>
                       </div>
@@ -503,7 +543,7 @@ export default function PaymentPage() {
                       className="w-full"
                       size="lg"
                     >
-                      {isProcessing ? 'Processing Payment...' : `Pay ${formatCurrency(bookingData.totalAmount + 40)}`}
+                      {isProcessing ? 'Processing Payment...' : `Pay ${formatCurrency(computeBookingTotals(bookingData).grand)}`}
                     </Button>
                   </div>
                 </CardContent>

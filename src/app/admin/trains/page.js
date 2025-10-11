@@ -206,27 +206,61 @@ export default function AdminTrainsPage() {
   const handleAddTrain = async () => {
     try {
       const authData = JSON.parse(localStorage.getItem('lak_auth') || '{}');
-      
+
+      const toNumber = (val) => {
+        if (val === null || val === undefined) return 0;
+        const cleaned = String(val).replace(/[^0-9.\-]/g, '');
+        const parsed = cleaned === '' ? NaN : Number(cleaned);
+        return Number.isFinite(parsed) ? parsed : 0;
+      };
+
+      const normalizeTime = (t) => {
+        if (!t) return '00:00:00';
+        // Accept HH:mm or HH:mm:ss
+        const parts = String(t).split(':');
+        if (parts.length === 2) return `${parts[0].padStart(2,'0')}:${parts[1].padStart(2,'0')}:00`;
+        if (parts.length >= 3) return `${parts[0].padStart(2,'0')}:${parts[1].padStart(2,'0')}:${parts[2].padStart(2,'0')}`;
+        return '00:00:00';
+      };
+
+      const distanceNum = toNumber(trainForm.distance);
+      const priceEco = toNumber(trainForm.pricing.economy);
+      const priceBus = toNumber(trainForm.pricing.business);
+      const priceFirst = toNumber(trainForm.pricing.first);
+      const totalSeats = toNumber(trainForm.seatInfo.totalSeats);
+      const availEco = toNumber(trainForm.seatInfo.availableEconomy);
+      const availBus = toNumber(trainForm.seatInfo.availableBusiness);
+      const availFirst = toNumber(trainForm.seatInfo.availableFirst);
+
+      // Front-end validations mirroring typical backend constraints
+      if (!trainForm.name?.trim()) throw new Error('Train name is required');
+      if (!trainForm.fromStation?.trim() || !trainForm.toStation?.trim()) throw new Error('From and To stations are required');
+      if (distanceNum <= 0) throw new Error('Distance must be greater than 0');
+      if (priceEco < 0 || priceBus < 0 || priceFirst < 0) throw new Error('Prices must be non-negative');
+      if (totalSeats <= 0) throw new Error('Total seats must be greater than 0');
+      if (availEco < 0 || availBus < 0 || availFirst < 0) throw new Error('Available seats must be non-negative');
+      if (availEco + availBus + availFirst > totalSeats) throw new Error('Sum of available seats cannot exceed total seats');
+
       const trainData = {
-        name: trainForm.name,
+        name: trainForm.name?.trim(),
         type: trainForm.type,
-        route: trainForm.route,
-        fromStation: trainForm.fromStation,
-        toStation: trainForm.toStation,
-        departureTime: trainForm.departureTime,
-        arrivalTime: trainForm.arrivalTime,
-        duration: trainForm.duration,
-        distance: parseFloat(trainForm.distance),
+        route: trainForm.route?.trim(),
+        fromStation: trainForm.fromStation?.trim(),
+        toStation: trainForm.toStation?.trim(),
+        departureTime: normalizeTime(trainForm.departureTime),
+        arrivalTime: normalizeTime(trainForm.arrivalTime),
+        duration: trainForm.duration?.trim(),
+        distance: `${distanceNum} km`,
         pricing: {
-          economy: parseFloat(trainForm.pricing.economy),
-          business: parseFloat(trainForm.pricing.business),
-          first: parseFloat(trainForm.pricing.first)
+          economyPrice: priceEco,
+          businessPrice: priceBus,
+          firstPrice: priceFirst
         },
         seatInfo: {
-          totalSeats: parseInt(trainForm.seatInfo.totalSeats),
-          availableEconomy: parseInt(trainForm.seatInfo.availableEconomy),
-          availableBusiness: parseInt(trainForm.seatInfo.availableBusiness),
-          availableFirst: parseInt(trainForm.seatInfo.availableFirst)
+          totalSeats: totalSeats,
+          availableEconomy: availEco,
+          availableBusiness: availBus,
+          availableFirst: availFirst
         },
         features: trainForm.features,
         status: trainForm.status
@@ -242,41 +276,80 @@ export default function AdminTrainsPage() {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to create train');
+        let backendMessage = '';
+        try {
+          const errJson = await response.json();
+          backendMessage = errJson?.message || JSON.stringify(errJson);
+        } catch (_) {
+          backendMessage = await response.text();
+        }
+        throw new Error(backendMessage || 'Failed to create train');
       }
 
       await fetchTrains(); // Refresh the list
       setIsAddModalOpen(false);
     } catch (error) {
       console.error('Error creating train:', error);
-      alert('Failed to create train: ' + error.message);
+      alert('Failed to create train: ' + (error?.message || 'Unknown error'));
     }
   };
 
   const handleEditTrain = async () => {
     try {
       const authData = JSON.parse(localStorage.getItem('lak_auth') || '{}');
-      
+
+      const toNumber = (val) => {
+        if (val === null || val === undefined) return 0;
+        const cleaned = String(val).replace(/[^0-9.\-]/g, '');
+        const parsed = cleaned === '' ? NaN : Number(cleaned);
+        return Number.isFinite(parsed) ? parsed : 0;
+      };
+
+      const normalizeTime = (t) => {
+        if (!t) return '00:00:00';
+        const parts = String(t).split(':');
+        if (parts.length === 2) return `${parts[0].padStart(2,'0')}:${parts[1].padStart(2,'0')}:00`;
+        if (parts.length >= 3) return `${parts[0].padStart(2,'0')}:${parts[1].padStart(2,'0')}:${parts[2].padStart(2,'0')}`;
+        return '00:00:00';
+      };
+
+      const distanceNum = toNumber(trainForm.distance);
+      const priceEco = toNumber(trainForm.pricing.economy);
+      const priceBus = toNumber(trainForm.pricing.business);
+      const priceFirst = toNumber(trainForm.pricing.first);
+      const totalSeats = toNumber(trainForm.seatInfo.totalSeats);
+      const availEco = toNumber(trainForm.seatInfo.availableEconomy);
+      const availBus = toNumber(trainForm.seatInfo.availableBusiness);
+      const availFirst = toNumber(trainForm.seatInfo.availableFirst);
+
+      if (!trainForm.name?.trim()) throw new Error('Train name is required');
+      if (!trainForm.fromStation?.trim() || !trainForm.toStation?.trim()) throw new Error('From and To stations are required');
+      if (distanceNum <= 0) throw new Error('Distance must be greater than 0');
+      if (priceEco < 0 || priceBus < 0 || priceFirst < 0) throw new Error('Prices must be non-negative');
+      if (totalSeats <= 0) throw new Error('Total seats must be greater than 0');
+      if (availEco < 0 || availBus < 0 || availFirst < 0) throw new Error('Available seats must be non-negative');
+      if (availEco + availBus + availFirst > totalSeats) throw new Error('Sum of available seats cannot exceed total seats');
+
       const trainData = {
-        name: trainForm.name,
+        name: trainForm.name?.trim(),
         type: trainForm.type,
-        route: trainForm.route,
-        fromStation: trainForm.fromStation,
-        toStation: trainForm.toStation,
-        departureTime: trainForm.departureTime,
-        arrivalTime: trainForm.arrivalTime,
-        duration: trainForm.duration,
-        distance: parseFloat(trainForm.distance),
+        route: trainForm.route?.trim(),
+        fromStation: trainForm.fromStation?.trim(),
+        toStation: trainForm.toStation?.trim(),
+        departureTime: normalizeTime(trainForm.departureTime),
+        arrivalTime: normalizeTime(trainForm.arrivalTime),
+        duration: trainForm.duration?.trim(),
+        distance: `${distanceNum} km`,
         pricing: {
-          economy: parseFloat(trainForm.pricing.economy),
-          business: parseFloat(trainForm.pricing.business),
-          first: parseFloat(trainForm.pricing.first)
+          economyPrice: priceEco,
+          businessPrice: priceBus,
+          firstPrice: priceFirst
         },
         seatInfo: {
-          totalSeats: parseInt(trainForm.seatInfo.totalSeats),
-          availableEconomy: parseInt(trainForm.seatInfo.availableEconomy),
-          availableBusiness: parseInt(trainForm.seatInfo.availableBusiness),
-          availableFirst: parseInt(trainForm.seatInfo.availableFirst)
+          totalSeats: totalSeats,
+          availableEconomy: availEco,
+          availableBusiness: availBus,
+          availableFirst: availFirst
         },
         features: trainForm.features,
         status: trainForm.status
@@ -292,7 +365,14 @@ export default function AdminTrainsPage() {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to update train');
+        let backendMessage = '';
+        try {
+          const errJson = await response.json();
+          backendMessage = errJson?.message || JSON.stringify(errJson);
+        } catch (_) {
+          backendMessage = await response.text();
+        }
+        throw new Error(backendMessage || 'Failed to update train');
       }
 
       await fetchTrains(); // Refresh the list
@@ -300,7 +380,7 @@ export default function AdminTrainsPage() {
       setSelectedTrain(null);
     } catch (error) {
       console.error('Error updating train:', error);
-      alert('Failed to update train: ' + error.message);
+      alert('Failed to update train: ' + (error?.message || 'Unknown error'));
     }
   };
 
@@ -391,7 +471,9 @@ export default function AdminTrainsPage() {
                     <th className="text-left py-3 px-4 font-medium text-gray-900">Type</th>
                     <th className="text-left py-3 px-4 font-medium text-gray-900">Schedule</th>
                     <th className="text-left py-3 px-4 font-medium text-gray-900">Seats</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-900">Price (from)</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-900">Economy</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-900">Business</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-900">First Class</th>
                     <th className="text-left py-3 px-4 font-medium text-gray-900">Status</th>
                     <th className="text-left py-3 px-4 font-medium text-gray-900">Actions</th>
                   </tr>
@@ -399,6 +481,13 @@ export default function AdminTrainsPage() {
                 <tbody>
                   {trains.map((train) => {
                     console.log('Train pricing data for', train.name, ':', train.pricing);
+                    const getNumber = (v) => {
+                      const n = typeof v === 'number' ? v : Number(v);
+                      return Number.isFinite(n) ? n : 0;
+                    };
+                    const priceEconomy = getNumber(train?.pricing?.economy ?? train?.economy ?? train?.economyPrice);
+                    const priceBusiness = getNumber(train?.pricing?.business ?? train?.business ?? train?.businessPrice);
+                    const priceFirst = getNumber(train?.pricing?.first ?? train?.first ?? train?.firstClassPrice);
                     return (
                     <tr key={train.id} className="border-b border-gray-100 hover:bg-gray-50">
                       <td className="py-3 px-4">
@@ -427,7 +516,13 @@ export default function AdminTrainsPage() {
                         <p className="text-sm text-gray-500">Available</p>
                       </td>
                       <td className="py-3 px-4">
-                        <p className="font-medium text-gray-900">{formatCurrency(train.pricing?.economy || 0)}</p>
+                        <p className="font-medium text-gray-900">{formatCurrency(priceEconomy)}</p>
+                      </td>
+                      <td className="py-3 px-4">
+                        <p className="font-medium text-gray-900">{formatCurrency(priceBusiness)}</p>
+                      </td>
+                      <td className="py-3 px-4">
+                        <p className="font-medium text-gray-900">{formatCurrency(priceFirst)}</p>
                       </td>
                       <td className="py-3 px-4">
                         <StatusBadge status={train.status} />

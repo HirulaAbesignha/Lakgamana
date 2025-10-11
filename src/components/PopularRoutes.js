@@ -12,6 +12,13 @@ const PopularRoutes = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   
+  const getPrice = (train) => {
+    const p = train?.pricing || {};
+    const val = p.economy ?? train?.economy ?? train?.economyPrice ?? 0;
+    const n = Number(val);
+    return Number.isFinite(n) ? n : 0;
+  };
+  
   useEffect(() => {
     fetchTrains();
   }, []);
@@ -41,7 +48,7 @@ const PopularRoutes = () => {
           departureTime: '08:00',
           arrivalTime: '10:30',
           duration: '2h 30m',
-          pricing: { economy: 150, business: 200, first: 300 },
+          pricing: { economy: 150 },
           features: ['AC', 'WiFi', 'Food Service'],
           rating: 4.8
         },
@@ -191,7 +198,7 @@ const PopularRoutes = () => {
                 <div className="flex items-center justify-between">
                   <div>
                     <span className="text-2xl font-bold text-green-600">
-                      {formatCurrency(train.pricing?.economy || 100)}
+                      {formatCurrency(getPrice(train) || 100)}
                     </span>
                     <span className="text-sm text-gray-500 ml-1">from</span>
                   </div>

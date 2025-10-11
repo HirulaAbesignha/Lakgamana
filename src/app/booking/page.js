@@ -27,12 +27,12 @@ function BookingForm() {
 
   const stations = [
     { value: '', label: 'Select Station' },
-    { value: 'colombo', label: 'Colombo Fort' },
-    { value: 'kandy', label: 'Kandy' },
-    { value: 'galle', label: 'Galle' },
-    { value: 'nuwara-eliya', label: 'Nuwara Eliya' },
-    { value: 'trincomalee', label: 'Trincomalee' },
-    { value: 'jaffna', label: 'Jaffna' }
+    { value: 'Colombo Fort', label: 'Colombo Fort' },
+    { value: 'Kandy', label: 'Kandy' },
+    { value: 'Galle', label: 'Galle' },
+    { value: 'Nuwara Eliya', label: 'Nuwara Eliya' },
+    { value: 'Trincomalee', label: 'Trincomalee' },
+    { value: 'Jaffna', label: 'Jaffna' }
   ];
 
   const seatClasses = [
@@ -40,6 +40,17 @@ function BookingForm() {
     { value: 'business', label: 'Business Class', price: 'from 250 LKR' },
     { value: 'first', label: 'First Class', price: 'from 400 LKR' }
   ];
+
+  const getPrice = (train, seat) => {
+    const pricing = train?.pricing || {};
+    const map = {
+      economy: pricing.economy ?? train?.economy ?? train?.economyPrice ?? 0,
+      business: pricing.business ?? train?.business ?? train?.businessPrice ?? 0,
+      first: pricing.first ?? train?.first ?? train?.firstClassPrice ?? 0,
+    };
+    const n = Number(map[seat]);
+    return Number.isFinite(n) ? n : 0;
+  };
 
   const searchTrains = async () => {
     if (!searchForm.from || !searchForm.to || !searchForm.date) {
@@ -51,31 +62,30 @@ function BookingForm() {
       setLoading(true);
       setSearchError(null);
 
-      const searchRequest = {
+      const params = new URLSearchParams({
         from: searchForm.from,
         to: searchForm.to,
-        date: searchForm.date
-      };
-
-      const response = await fetch('http://localhost:8081/trains/search', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(searchRequest)
+        date: searchForm.date,
+        seatClass: seatClass
       });
+      const response = await fetch(`http://localhost:8081/trains/search?${params.toString()}`);
 
       if (!response.ok) {
-        throw new Error('Failed to search trains');
+        let backendMessage = '';
+        try {
+          const errJson = await response.json();
+          backendMessage = errJson?.message || JSON.stringify(errJson);
+        } catch (_) {
+          backendMessage = await response.text();
+        }
+        throw new Error(backendMessage || 'Failed to search trains');
       }
 
       const result = await response.json();
-      setAvailableTrains(result.data || []);
-      
-      // Move to step 2 if trains are found
-      if (result.data && result.data.length > 0) {
-        setBookingStep(2);
-      }
+      const trains = (result?.data && (result.data.content ?? result.data)) || [];
+      setAvailableTrains(trains);
+      // Always move to step 2; UI handles empty state gracefully
+      setBookingStep(2);
     } catch (error) {
       console.error('Error searching trains:', error);
       setSearchError(error.message);
@@ -145,7 +155,7 @@ function BookingForm() {
         adultsCount: parseInt(searchForm.adults) || 0,
         childrenCount: parseInt(searchForm.children) || 0,
         totalAmount: (() => {
-          const adultUnit = selectedTrain.pricing?.[seatClass] || 0;
+          const adultUnit = getPrice(selectedTrain, seatClass);
           const childUnit = Math.round(adultUnit / 2);
           const numAdults = parseInt(searchForm.adults) || 0;
           const numChildren = parseInt(searchForm.children) || 0;
@@ -332,7 +342,7 @@ function BookingForm() {
                           </div>
                           <div className="text-center mb-4">
                             <p className="text-2xl font-bold text-green-600">
-                              {formatCurrency(train.pricing?.economy || 0)}
+                              {formatCurrency(getPrice(train, 'economy'))}
                             </p>
                             <p className="text-sm text-gray-500">from</p>
                           </div>
@@ -393,7 +403,7 @@ function BookingForm() {
                             <span>Total Amount:</span>
                             <span className="font-bold text-lg">
                               {(() => {
-                                const adultUnit = selectedTrain.price[seatClass];
+                                const adultUnit = getPrice(selectedTrain, seatClass);
                                 const childUnit = Math.round(adultUnit / 2);
                                 const numAdults = parseInt(searchForm.adults) || 0;
                                 const numChildren = parseInt(searchForm.children) || 0;

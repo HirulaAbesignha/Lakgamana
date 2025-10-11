@@ -54,14 +54,15 @@ public class BookingController {
     }
 
     @GetMapping("/user")
-    @Operation(summary = "Get user bookings", description = "Get bookings for current user")
+    @Operation(summary = "Get user bookings", description = "Get active bookings for current user (excludes cancelled)")
     @PreAuthorize("hasRole('USER') or hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<List<BookingResponse>>> getUserBookings(
             @RequestParam(required = false) BookingStatus status,
             @RequestParam(required = false) LocalDate date) {
         try {
             Long userId = authService.getCurrentUser().getId();
-            List<Booking> bookings = bookingService.findUserBookingsWithFilters(userId, status, date);
+            // Use active bookings method to exclude cancelled bookings for users
+            List<Booking> bookings = bookingService.findActiveUserBookingsWithFilters(userId, status, date);
             List<BookingResponse> bookingResponses = bookings.stream()
                     .map(BookingResponse::fromEntity)
                     .toList();
@@ -110,8 +111,8 @@ public class BookingController {
             @PathVariable String bookingId,
             @RequestParam String reason) {
         try {
-            Booking booking = bookingService.cancelBooking(bookingService.findByBookingId(bookingId).getId(), reason);
-            BookingResponse bookingResponse = BookingResponse.fromEntity(booking);
+            Booking cancelledBooking = bookingService.cancelBookingByBookingId(bookingId, reason);
+            BookingResponse bookingResponse = BookingResponse.fromEntity(cancelledBooking);
             return ResponseEntity.ok(ApiResponse.success("Booking cancelled successfully", bookingResponse));
         } catch (Exception e) {
             log.error("Failed to cancel booking with id: {}", bookingId, e);

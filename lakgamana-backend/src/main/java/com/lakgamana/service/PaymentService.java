@@ -77,7 +77,8 @@ public class PaymentService {
     }
 
     public Payment processPayment(PaymentRequest paymentRequest) {
-        Booking booking = bookingService.findByBookingId(paymentRequest.getBookingId().toString());
+        // Align with PaymentRequest which uses numeric bookingId
+        Booking booking = bookingService.findById(paymentRequest.getBookingId());
         
         // Create payment record
         Payment payment = new Payment();

@@ -25,6 +25,41 @@ public class FeedbackResponse {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
+    // Default constructor
+    public FeedbackResponse() {}
+
+    // Getters and Setters
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
+    public String getFeedbackId() { return feedbackId; }
+    public void setFeedbackId(String feedbackId) { this.feedbackId = feedbackId; }
+    public UserResponse getUser() { return user; }
+    public void setUser(UserResponse user) { this.user = user; }
+    public String getBookingId() { return bookingId; }
+    public void setBookingId(String bookingId) { this.bookingId = bookingId; }
+    public TrainResponse getTrain() { return train; }
+    public void setTrain(TrainResponse train) { this.train = train; }
+    public Integer getRating() { return rating; }
+    public void setRating(Integer rating) { this.rating = rating; }
+    public String getTitle() { return title; }
+    public void setTitle(String title) { this.title = title; }
+    public String getComment() { return comment; }
+    public void setComment(String comment) { this.comment = comment; }
+    public FeedbackCategory getCategory() { return category; }
+    public void setCategory(FeedbackCategory category) { this.category = category; }
+    public FeedbackStatus getStatus() { return status; }
+    public void setStatus(FeedbackStatus status) { this.status = status; }
+    public LocalDateTime getSubmittedDate() { return submittedDate; }
+    public void setSubmittedDate(LocalDateTime submittedDate) { this.submittedDate = submittedDate; }
+    public String getAdminResponse() { return adminResponse; }
+    public void setAdminResponse(String adminResponse) { this.adminResponse = adminResponse; }
+    public LocalDateTime getAdminResponseDate() { return adminResponseDate; }
+    public void setAdminResponseDate(LocalDateTime adminResponseDate) { this.adminResponseDate = adminResponseDate; }
+    public LocalDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+    public LocalDateTime getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
+
     public static class UserResponse {
         private Long id;
         private String userId;

@@ -59,7 +59,8 @@ export default function AdminReservationsPage() {
       }
 
       const result = await response.json();
-      setBookings(Array.isArray(result.data) ? result.data : []);
+      const list = (result?.data && (result.data.content ?? result.data)) || [];
+      setBookings(Array.isArray(list) ? list : []);
     } catch (error) {
       console.error('Error fetching bookings:', error);
       setError(error.message);

@@ -19,6 +19,7 @@ public class AdminSetupController {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(AdminSetupController.class);
 
     public AdminSetupController(UserRepository userRepository, PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;

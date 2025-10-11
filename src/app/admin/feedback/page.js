@@ -1,34 +1,81 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card';
 import Button from '../../../components/ui/button';
 import { Input, Select } from '../../../components/ui/input';
 import { StatusBadge } from '../../../components/ui/badge';
 import { Modal, ModalHeader, ModalBody, ModalFooter } from '../../../components/ui/modal';
-import feedbackData from '../../../data/feedback.json';
 import { formatDate } from '../../../lib/utils';
 
 export default function AdminFeedbackPage() {
-  const [feedback, setFeedback] = useState(feedbackData);
+  const router = useRouter();
+  const [feedback, setFeedback] = useState([]);
   const [selectedFeedback, setSelectedFeedback] = useState(null);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [filterStatus, setFilterStatus] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   const statusOptions = [
     { value: 'all', label: 'All Status' },
-    { value: 'approved', label: 'Approved' },
-    { value: 'pending', label: 'Pending' }
+    { value: 'REVIEWED', label: 'Reviewed' },
+    { value: 'PENDING', label: 'Pending' }
   ];
+
+  useEffect(() => {
+    fetchFeedback();
+  }, []);
+
+  const fetchFeedback = async () => {
+    try {
+      setLoading(true);
+      const authData = JSON.parse(localStorage.getItem('lak_auth') || '{}');
+      
+      if (!authData.token) {
+        router.push('/login');
+        return;
+      }
+
+      const response = await fetch('http://localhost:8081/feedback/admin', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authData.token}`
+        }
+      });
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          localStorage.removeItem('lak_auth');
+          router.push('/login');
+          return;
+        }
+        throw new Error('Failed to fetch feedback');
+      }
+
+      const result = await response.json();
+      const list = (result?.data && (result.data.content ?? result.data)) || [];
+      setFeedback(Array.isArray(list) ? list : []);
+    } catch (error) {
+      console.error('Error fetching feedback:', error);
+      setError(error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const filteredFeedback = feedback.filter(item => {
     const matchesStatus = filterStatus === 'all' || item.status === filterStatus;
     const matchesSearch = 
-      item.userName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.comment.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.trainName?.toLowerCase().includes(searchTerm.toLowerCase());
+      item.user?.firstName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.user?.lastName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.comment?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.train?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.title?.toLowerCase().includes(searchTerm.toLowerCase());
     return matchesStatus && matchesSearch;
   });
 
@@ -42,9 +89,31 @@ export default function AdminFeedbackPage() {
     setIsDeleteModalOpen(true);
   };
 
-  const handleDeleteFeedback = () => {
+  const handleDeleteFeedback = async () => {
     if (selectedFeedback) {
-      setFeedback(prev => prev.filter(item => item.id !== selectedFeedback.id));
+      try {
+        const authData = JSON.parse(localStorage.getItem('lak_auth') || '{}');
+        
+        const response = await fetch(`http://localhost:8081/feedback/${selectedFeedback.feedbackId}`, {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${authData.token}`
+          }
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('Delete feedback error response:', errorText);
+          throw new Error(`Failed to delete feedback: ${response.status} ${response.statusText}`);
+        }
+
+        // Refresh feedback list
+        await fetchFeedback();
+      } catch (error) {
+        console.error('Error deleting feedback:', error);
+        setError(error.message);
+      }
     }
     setIsDeleteModalOpen(false);
     setSelectedFeedback(null);
@@ -52,11 +121,37 @@ export default function AdminFeedbackPage() {
 
   const getStatusColor = (status) => {
     switch (status) {
-      case 'approved': return 'success';
-      case 'pending': return 'warning';
+      case 'REVIEWED': return 'success';
+      case 'PENDING': return 'warning';
       default: return 'default';
     }
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-64">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading feedback...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-red-600 text-6xl mb-4">⚠️</div>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">Error Loading Feedback</h1>
+          <p className="text-gray-600 mb-4">{error}</p>
+          <Button onClick={fetchFeedback}>
+            Try Again
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -102,7 +197,9 @@ export default function AdminFeedbackPage() {
                 <div className="flex justify-between items-start mb-3">
                   <div>
                     <h3 className="font-medium text-gray-900">{item.title}</h3>
-                    <p className="text-sm text-gray-500">by {item.userName} • {formatDate(item.submittedDate)}</p>
+                    <p className="text-sm text-gray-500">
+                      by {item.user?.firstName} {item.user?.lastName} • {formatDate(item.submittedDate)}
+                    </p>
                   </div>
                   <div className="flex items-center space-x-2">
                     <div className="flex items-center">
@@ -128,7 +225,8 @@ export default function AdminFeedbackPage() {
                 <div className="flex justify-between items-center">
                   <div className="flex items-center space-x-4 text-sm text-gray-500">
                     <span>Category: {item.category}</span>
-                    {item.trainName && <span>Train: {item.trainName}</span>}
+                    {item.train?.name && <span>Train: {item.train.name}</span>}
+                    {item.booking?.bookingId && <span>Booking: {item.booking.bookingId}</span>}
                   </div>
                   <div className="flex space-x-2">
                     <Button
@@ -190,11 +288,11 @@ export default function AdminFeedbackPage() {
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
                       <span className="text-gray-600">Name:</span>
-                      <span className="font-medium">{selectedFeedback.userName}</span>
+                      <span className="font-medium">{selectedFeedback.user?.firstName} {selectedFeedback.user?.lastName}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-600">User ID:</span>
-                      <span className="font-medium">{selectedFeedback.userId}</span>
+                      <span className="text-gray-600">Email:</span>
+                      <span className="font-medium">{selectedFeedback.user?.email}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-600">Submitted:</span>
@@ -214,10 +312,16 @@ export default function AdminFeedbackPage() {
                       <span className="text-gray-600">Rating:</span>
                       <span className="font-medium">{selectedFeedback.rating}/5</span>
                     </div>
-                    {selectedFeedback.trainName && (
+                    {selectedFeedback.train?.name && (
                       <div className="flex justify-between">
                         <span className="text-gray-600">Train:</span>
-                        <span className="font-medium">{selectedFeedback.trainName}</span>
+                        <span className="font-medium">{selectedFeedback.train.name}</span>
+                      </div>
+                    )}
+                    {selectedFeedback.booking?.bookingId && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Booking ID:</span>
+                        <span className="font-medium">{selectedFeedback.booking.bookingId}</span>
                       </div>
                     )}
                   </div>

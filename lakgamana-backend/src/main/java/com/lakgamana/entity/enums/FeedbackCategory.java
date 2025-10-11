@@ -3,8 +3,7 @@ package com.lakgamana.entity.enums;
 public enum FeedbackCategory {
     SERVICE_QUALITY,
     CLEANLINESS,
-    PUNCTUALITY,
-    STAFF_BEHAVIOR,
+    STAFF,
     FOOD_QUALITY,
     OTHER
 }

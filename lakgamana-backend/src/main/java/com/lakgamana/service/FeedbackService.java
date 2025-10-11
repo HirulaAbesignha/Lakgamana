@@ -88,7 +88,7 @@ public class FeedbackService {
         Train train = null;
         
         if (feedbackRequest.getBookingId() != null) {
-            booking = bookingService.findById(feedbackRequest.getBookingId());
+            booking = bookingService.findByBookingId(feedbackRequest.getBookingId());
             train = booking.getTrain();
         } else if (feedbackRequest.getTrainId() != null) {
             train = trainService.findById(feedbackRequest.getTrainId());

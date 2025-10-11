@@ -99,7 +99,9 @@ public class Booking {
     }
 
     public boolean canBeCancelled() {
-        return isConfirmed() && departureDate.isAfter(LocalDate.now());
+        // Allow cancellation for PENDING bookings or CONFIRMED bookings with future departure date
+        return (status == BookingStatus.PENDING) || 
+               (isConfirmed() && departureDate.isAfter(LocalDate.now()));
     }
 
     public void cancel(String reason) {

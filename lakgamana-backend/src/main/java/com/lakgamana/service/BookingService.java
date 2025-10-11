@@ -58,6 +58,12 @@ public class BookingService {
     }
 
     @Transactional(readOnly = true)
+    public List<Booking> findActiveUserBookingsWithFilters(Long userId, BookingStatus status, 
+                                                           java.time.LocalDate date) {
+        return bookingRepository.findActiveUserBookingsWithFilters(userId, status, date);
+    }
+
+    @Transactional(readOnly = true)
     public Page<Booking> findBookingsWithFilters(String userName, String trainName, 
                                                 String bookingId, BookingStatus status, 
                                                 Pageable pageable) {
@@ -131,6 +137,29 @@ public class BookingService {
 
     public Booking cancelBooking(Long bookingId, String reason) {
         Booking booking = findById(bookingId);
+        
+        // Debug logging
+        log.info("Attempting to cancel booking ID: {}, Status: {}, Departure Date: {}", 
+                bookingId, booking.getStatus(), booking.getDepartureDate());
+        
+        if (!booking.canBeCancelled()) {
+            log.error("Booking {} cannot be cancelled. Status: {}, Departure Date: {}, Current Date: {}", 
+                    bookingId, booking.getStatus(), booking.getDepartureDate(), java.time.LocalDate.now());
+            throw new RuntimeException("Booking cannot be cancelled");
+        }
+
+        booking.cancel(reason);
+        
+        // Update seat availability (release seats)
+        Train train = booking.getTrain();
+        int totalPassengers = booking.getPassengers().size();
+        // Note: This is a simplified approach. In production, you might want to track seat numbers
+        
+        return bookingRepository.save(booking);
+    }
+
+    public Booking cancelBookingByBookingId(String bookingId, String reason) {
+        Booking booking = findByBookingId(bookingId);
         
         if (!booking.canBeCancelled()) {
             throw new RuntimeException("Booking cannot be cancelled");

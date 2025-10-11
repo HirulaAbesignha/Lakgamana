@@ -35,6 +35,16 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
             @Param("date") LocalDate date
     );
 
+    @Query("SELECT b FROM Booking b WHERE b.user.id = :userId AND " +
+           "b.status != 'CANCELLED' AND " +
+           "(:status IS NULL OR b.status = :status) AND " +
+           "(:date IS NULL OR b.departureDate = :date)")
+    List<Booking> findActiveUserBookingsWithFilters(
+            @Param("userId") Long userId,
+            @Param("status") BookingStatus status,
+            @Param("date") LocalDate date
+    );
+
     @Query("SELECT b FROM Booking b WHERE " +
            "(:userName IS NULL OR LOWER(b.user.firstName) LIKE LOWER(CONCAT('%', :userName, '%')) OR " +
            "LOWER(b.user.lastName) LIKE LOWER(CONCAT('%', :userName, '%'))) AND " +
