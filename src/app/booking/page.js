@@ -73,10 +73,15 @@ function BookingForm() {
       if (!response.ok) {
         let backendMessage = '';
         try {
-          const errJson = await response.json();
-          backendMessage = errJson?.message || JSON.stringify(errJson);
+          const responseText = await response.text();
+          try {
+            const errJson = JSON.parse(responseText);
+            backendMessage = errJson?.message || JSON.stringify(errJson);
+          } catch {
+            backendMessage = responseText;
+          }
         } catch (_) {
-          backendMessage = await response.text();
+          backendMessage = `HTTP ${response.status}: ${response.statusText}`;
         }
         throw new Error(backendMessage || 'Failed to search trains');
       }

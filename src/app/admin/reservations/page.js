@@ -60,7 +60,17 @@ export default function AdminReservationsPage() {
 
       const result = await response.json();
       const list = (result?.data && (result.data.content ?? result.data)) || [];
-      setBookings(Array.isArray(list) ? list : []);
+      console.log('Admin reservations data:', list);
+      console.log('Booking statuses:', list.map(b => ({ id: b.id, bookingId: b.bookingId, status: b.status })));
+      
+      // Sort bookings by creation date (newest first)
+      const sortedList = Array.isArray(list) ? list.sort((a, b) => {
+        const dateA = new Date(a.bookingDate || a.createdAt || 0);
+        const dateB = new Date(b.bookingDate || b.createdAt || 0);
+        return dateB - dateA; // Newest first
+      }) : [];
+      
+      setBookings(sortedList);
     } catch (error) {
       console.error('Error fetching bookings:', error);
       setError(error.message);
@@ -70,7 +80,7 @@ export default function AdminReservationsPage() {
   };
 
   const filteredBookings = (bookings || []).filter(booking => {
-    const matchesStatus = filterStatus === 'all' || booking.status === filterStatus;
+    const matchesStatus = filterStatus === 'all' || booking.status?.toUpperCase() === filterStatus?.toUpperCase();
     const matchesSearch = 
       booking.user?.firstName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       booking.user?.lastName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -291,16 +301,17 @@ export default function AdminReservationsPage() {
                         >
                           View
                         </Button>
-                        {booking.status === 'PENDING' && (
+                        {booking.status?.toUpperCase() === 'PENDING' && (
                           <Button
                             variant="success"
                             size="sm"
                             onClick={() => handleConfirmBooking(booking)}
+                            className="bg-green-600 hover:bg-green-700 text-white"
                           >
                             Done
                           </Button>
                         )}
-                        {booking.status === 'CONFIRMED' && (
+                        {booking.status?.toUpperCase() === 'CONFIRMED' && (
                           <Button
                             variant="danger"
                             size="sm"

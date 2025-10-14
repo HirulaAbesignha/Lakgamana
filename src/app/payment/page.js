@@ -169,10 +169,15 @@ export default function PaymentPage() {
       if (!paymentResponse.ok) {
         let backendMessage = '';
         try {
-          const errJson = await paymentResponse.json();
-          backendMessage = errJson?.message || JSON.stringify(errJson);
+          const responseText = await paymentResponse.text();
+          try {
+            const errJson = JSON.parse(responseText);
+            backendMessage = errJson?.message || JSON.stringify(errJson);
+          } catch {
+            backendMessage = responseText;
+          }
         } catch (_) {
-          backendMessage = await paymentResponse.text();
+          backendMessage = `HTTP ${paymentResponse.status}: ${paymentResponse.statusText}`;
         }
         console.error('Payment processing failed:', paymentResponse.status, backendMessage);
         // Show error to user
@@ -191,14 +196,8 @@ export default function PaymentPage() {
         }
       });
 
-      // Confirm booking
-      await fetch(`http://localhost:8081/bookings/${bookingResult.data.id}/confirm`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authData.token}`
-        }
-      });
+      // Don't automatically confirm booking - let admin do it manually
+      // This allows users to edit/delete/reschedule their bookings until admin confirms
 
       setIsProcessing(false);
       setPaymentSuccess(true);

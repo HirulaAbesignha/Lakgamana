@@ -92,12 +92,12 @@ export default function AdminPaymentsPage() {
 
   // Calculate total ticket amount (all completed payments)
   const totalTicketAmount = (Array.isArray(payments) ? payments : [])
-    .filter(payment => payment.status === 'completed')
+    .filter(payment => payment.status?.toLowerCase() === 'completed')
     .reduce((sum, payment) => sum + (payment.amount || 0), 0);
 
   // Calculate total refunds
   const totalRefunds = (Array.isArray(payments) ? payments : [])
-    .filter(payment => payment.status === 'refunded')
+    .filter(payment => payment.status?.toLowerCase() === 'refunded')
     .reduce((sum, payment) => sum + (payment.refundAmount || payment.amount || 0), 0);
 
   // Total Revenue = Total Ticket Amount - Total Refunds

@@ -106,8 +106,8 @@ public class PaymentService {
         payment.markAsCompleted();
         payment.setUpdatedAt(LocalDateTime.now());
         
-        // Confirm the booking
-        bookingService.confirmBooking(payment.getBooking().getId());
+        // Don't automatically confirm booking - let admin do it manually
+        // bookingService.confirmBooking(payment.getBooking().getId());
         
         return paymentRepository.save(payment);
     }

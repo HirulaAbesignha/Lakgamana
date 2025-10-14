@@ -189,9 +189,11 @@ public class BookingService {
             throw new IllegalArgumentException("Only ongoing bookings can be refunded");
         }
         
-        // Check if booking is ongoing (allow refunds for today and future dates)
-        if (booking.getDepartureDate().isBefore(java.time.LocalDate.now().minusDays(1))) {
-            throw new IllegalArgumentException("Cannot refund bookings that departed more than 1 day ago");
+        // Check if booking is ongoing (allow refunds for PENDING bookings regardless of date, 
+        // but limit CONFIRMED bookings to recent departures)
+        if (booking.getStatus() == BookingStatus.CONFIRMED && 
+            booking.getDepartureDate().isBefore(java.time.LocalDate.now().minusDays(1))) {
+            throw new IllegalArgumentException("Cannot refund confirmed bookings that departed more than 1 day ago");
         }
         
         // Find the payment for this booking
@@ -237,6 +239,11 @@ public class BookingService {
     @Transactional(readOnly = true)
     public List<Booking> findRecentConfirmedBookings(Pageable pageable) {
         return bookingRepository.findRecentConfirmedBookings(pageable);
+    }
+
+    @Transactional(readOnly = true)
+    public List<Booking> findRecentBookings(Pageable pageable) {
+        return bookingRepository.findAll(pageable).getContent();
     }
 
     @Transactional(readOnly = true)

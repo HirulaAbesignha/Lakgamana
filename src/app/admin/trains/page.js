@@ -99,9 +99,9 @@ export default function AdminTrainsPage() {
 
   const trainTypes = [
     { value: 'EXPRESS', label: 'Express' },
-    { value: 'INTERCITY', label: 'Intercity' },
-    { value: 'SCENIC', label: 'Scenic' },
-    { value: 'LOCAL', label: 'Local' }
+    { value: 'PASSENGER', label: 'Passenger' },
+    { value: 'MAIL', label: 'Mail' },
+    { value: 'SUPERFAST', label: 'Superfast' }
   ];
 
   const trainStatuses = [
@@ -278,10 +278,15 @@ export default function AdminTrainsPage() {
       if (!response.ok) {
         let backendMessage = '';
         try {
-          const errJson = await response.json();
-          backendMessage = errJson?.message || JSON.stringify(errJson);
+          const responseText = await response.text();
+          try {
+            const errJson = JSON.parse(responseText);
+            backendMessage = errJson?.message || JSON.stringify(errJson);
+          } catch {
+            backendMessage = responseText;
+          }
         } catch (_) {
-          backendMessage = await response.text();
+          backendMessage = `HTTP ${response.status}: ${response.statusText}`;
         }
         throw new Error(backendMessage || 'Failed to create train');
       }
@@ -367,10 +372,15 @@ export default function AdminTrainsPage() {
       if (!response.ok) {
         let backendMessage = '';
         try {
-          const errJson = await response.json();
-          backendMessage = errJson?.message || JSON.stringify(errJson);
+          const responseText = await response.text();
+          try {
+            const errJson = JSON.parse(responseText);
+            backendMessage = errJson?.message || JSON.stringify(errJson);
+          } catch {
+            backendMessage = responseText;
+          }
         } catch (_) {
-          backendMessage = await response.text();
+          backendMessage = `HTTP ${response.status}: ${response.statusText}`;
         }
         throw new Error(backendMessage || 'Failed to update train');
       }

@@ -212,12 +212,19 @@ export default function AdminDashboard() {
             <div className="space-y-3">
               {recentBookings.length > 0 ? (
                 recentBookings.map((booking) => (
-                  <div key={booking.id} className="flex items-center justify-between py-2 border-b border-gray-100 last:border-b-0">
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">{booking.trainName || 'Train Booking'}</p>
-                      <p className="text-xs text-gray-500">{booking.route || 'Route'}</p>
+                  <div key={booking.id} className="py-3 border-b border-gray-100 last:border-b-0">
+                    <div className="flex items-center justify-between mb-1">
+                      <p className="text-sm font-medium text-gray-900">{booking.bookingId}</p>
+                      <StatusBadge status={booking.status} />
                     </div>
-                    <StatusBadge status={booking.status} />
+                    <div className="flex items-center justify-between text-xs text-gray-500">
+                      <span>{booking.user?.firstName} {booking.user?.lastName}</span>
+                      <span>{booking.train?.name}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-xs text-gray-500 mt-1">
+                      <span>LKR {booking.totalAmount}</span>
+                      <span>{new Date(booking.bookingDate).toLocaleDateString()}</span>
+                    </div>
                   </div>
                 ))
               ) : (
@@ -235,9 +242,12 @@ export default function AdminDashboard() {
             <div className="space-y-3">
               {recentFeedback.length > 0 ? (
                 recentFeedback.map((feedback) => (
-                  <div key={feedback.id} className="py-2 border-b border-gray-100 last:border-b-0">
-                    <div className="flex items-center justify-between mb-1">
-                      <p className="text-sm font-medium text-gray-900">{feedback.userName || 'User'}</p>
+                  <div key={feedback.id} className="py-3 border-b border-gray-100 last:border-b-0">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center space-x-2">
+                        <p className="text-sm font-medium text-gray-900">{feedback.user?.firstName} {feedback.user?.lastName}</p>
+                        <StatusBadge status={feedback.status} />
+                      </div>
                       <div className="flex items-center">
                         {[...Array(5)].map((_, i) => (
                           <svg
@@ -253,7 +263,11 @@ export default function AdminDashboard() {
                         ))}
                       </div>
                     </div>
-                    <p className="text-xs text-gray-600 line-clamp-2">{feedback.comment || 'No comment'}</p>
+                    <p className="text-xs text-gray-600 line-clamp-2 mb-1">{feedback.comment || 'No comment'}</p>
+                    <div className="flex items-center justify-between text-xs text-gray-500">
+                      <span>{feedback.train?.name}</span>
+                      <span>{new Date(feedback.submittedDate).toLocaleDateString()}</span>
+                    </div>
                   </div>
                 ))
               ) : (

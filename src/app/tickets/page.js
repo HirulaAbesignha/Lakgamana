@@ -52,7 +52,16 @@ export default function MyTicketsPage() {
       }
 
       const result = await response.json();
-      setTickets(Array.isArray(result.data) ? result.data : []);
+      const tickets = Array.isArray(result.data) ? result.data : [];
+      
+      // Sort tickets by creation date (newest first)
+      const sortedTickets = tickets.sort((a, b) => {
+        const dateA = new Date(a.bookingDate || a.createdAt || 0);
+        const dateB = new Date(b.bookingDate || b.createdAt || 0);
+        return dateB - dateA; // Newest first
+      });
+      
+      setTickets(sortedTickets);
     } catch (error) {
       console.error('Error fetching bookings:', error);
       setError(error.message);
@@ -109,10 +118,15 @@ export default function MyTicketsPage() {
         if (!response.ok) {
           let backendMessage = '';
           try {
-            const errJson = await response.json();
-            backendMessage = errJson?.message || JSON.stringify(errJson);
+            const responseText = await response.text();
+            try {
+              const errJson = JSON.parse(responseText);
+              backendMessage = errJson?.message || JSON.stringify(errJson);
+            } catch {
+              backendMessage = responseText;
+            }
           } catch (_) {
-            backendMessage = await response.text();
+            backendMessage = `HTTP ${response.status}: ${response.statusText}`;
           }
           setError(backendMessage || 'Failed to submit feedback');
           return false;
@@ -151,9 +165,20 @@ export default function MyTicketsPage() {
         });
 
         if (!response.ok) {
-          const errorData = await response.json();
-          console.error('Refund API Error:', errorData);
-          throw new Error(errorData.message || `Failed to process refund: ${response.status} ${response.statusText}`);
+          let errorMessage = '';
+          try {
+            const responseText = await response.text();
+            try {
+              const errorData = JSON.parse(responseText);
+              errorMessage = errorData.message || JSON.stringify(errorData);
+            } catch {
+              errorMessage = responseText || `HTTP ${response.status}: ${response.statusText}`;
+            }
+          } catch (_) {
+            errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+          }
+          console.error('Refund API Error:', errorMessage);
+          throw new Error(errorMessage || `Failed to process refund: ${response.status} ${response.statusText}`);
         }
 
         const result = await response.json();
@@ -175,7 +200,7 @@ export default function MyTicketsPage() {
   };
 
   const handleDeleteTicket = async (ticket) => {
-    if (ticket?.status !== 'PENDING') {
+    if (ticket?.status?.toUpperCase() !== 'PENDING') {
       setError('Only pending bookings can be cancelled/deleted.');
       return;
     }
@@ -200,10 +225,15 @@ export default function MyTicketsPage() {
         if (!response.ok) {
           let backendMessage = '';
           try {
-            const errJson = await response.json();
-            backendMessage = errJson?.message || JSON.stringify(errJson);
+            const responseText = await response.text();
+            try {
+              const errJson = JSON.parse(responseText);
+              backendMessage = errJson?.message || JSON.stringify(errJson);
+            } catch {
+              backendMessage = responseText;
+            }
           } catch (_) {
-            backendMessage = await response.text();
+            backendMessage = `HTTP ${response.status}: ${response.statusText}`;
           }
           setError(backendMessage || 'Failed to delete booking');
           return;
@@ -240,10 +270,15 @@ export default function MyTicketsPage() {
         if (!response.ok) {
           let backendMessage = '';
           try {
-            const errJson = await response.json();
-            backendMessage = errJson?.message || JSON.stringify(errJson);
+            const responseText = await response.text();
+            try {
+              const errJson = JSON.parse(responseText);
+              backendMessage = errJson?.message || JSON.stringify(errJson);
+            } catch {
+              backendMessage = responseText;
+            }
           } catch (_) {
-            backendMessage = await response.text();
+            backendMessage = `HTTP ${response.status}: ${response.statusText}`;
           }
           setError(backendMessage || 'Failed to cancel booking');
           setIsCancelModalOpen(false);
@@ -268,7 +303,8 @@ export default function MyTicketsPage() {
   };
 
   const getStatusColor = (status) => {
-    switch (status) {
+    const statusLower = status?.toLowerCase();
+    switch (statusLower) {
       case 'confirmed': return 'success';
       case 'cancelled': return 'error';
       case 'pending': return 'success'; // Changed from warning to success for ongoing
@@ -277,7 +313,8 @@ export default function MyTicketsPage() {
   };
 
   const getStatusText = (status) => {
-    switch (status) {
+    const statusLower = status?.toLowerCase();
+    switch (statusLower) {
       case 'confirmed': return 'Confirmed';
       case 'cancelled': return 'Cancelled';
       case 'pending': return 'Ongoing'; // Changed from Pending to Ongoing
@@ -428,7 +465,7 @@ export default function MyTicketsPage() {
                             Feedback
                           </Button>
 
-                          {(ticket.status === 'PENDING') && (
+                          {(ticket.status?.toUpperCase() === 'PENDING') && (
                             <Button
                               variant="outline"
                               size="sm"
@@ -442,7 +479,7 @@ export default function MyTicketsPage() {
                             </Button>
                           )}
                           
-                          {(ticket.status === 'PENDING') && (
+                          {(ticket.status?.toUpperCase() === 'PENDING') && (
                             <>
                               <Button
                                 variant="outline"

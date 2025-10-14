@@ -14,6 +14,11 @@ public class UpdateProfileRequest {
     @Size(max = 50, message = "Last name must not exceed 50 characters")
     private String lastName;
 
+    @NotBlank(message = "Email is required")
+    @Pattern(regexp = "^[A-Za-z0-9+_.-]+@([A-Za-z0-9.-]+\\.[A-Za-z]{2,})$", 
+             message = "Please provide a valid email address")
+    private String email;
+
     @NotBlank(message = "Phone number is required")
     @Pattern(regexp = "^\\+?[\\d\\s\\-\\(\\)]+$", message = "Please provide a valid phone number")
     private String phone;
@@ -24,6 +29,8 @@ public class UpdateProfileRequest {
     public void setFirstName(String firstName) { this.firstName = firstName; }
     public String getLastName() { return lastName; }
     public void setLastName(String lastName) { this.lastName = lastName; }
+    public String getEmail() { return email; }
+    public void setEmail(String email) { this.email = email; }
     public String getPhone() { return phone; }
     public void setPhone(String phone) { this.phone = phone; }
 }

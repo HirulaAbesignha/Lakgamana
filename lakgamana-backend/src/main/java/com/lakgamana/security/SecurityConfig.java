@@ -85,13 +85,16 @@ public class SecurityConfig {
                 .requestMatchers("/admin/**").hasRole("ADMIN")
                 .requestMatchers("/trains/**").hasRole("ADMIN")
                 .requestMatchers("/users/**").hasRole("ADMIN")
-                .requestMatchers("/payments/**").hasRole("ADMIN")
-                .requestMatchers("/feedback/**").hasRole("ADMIN")
+                .requestMatchers("/payments/admin/**").hasRole("ADMIN")
+                .requestMatchers("/feedback/admin/**").hasRole("ADMIN")
+                .requestMatchers("/feedback/stats").hasRole("ADMIN")
                 
                 // User endpoints
                 .requestMatchers("/bookings/**").hasAnyRole("USER", "ADMIN")
                 .requestMatchers("/tickets/**").hasAnyRole("USER", "ADMIN")
                 .requestMatchers("/profile/**").hasAnyRole("USER", "ADMIN")
+                .requestMatchers("/payments/process").hasAnyRole("USER", "ADMIN")
+                .requestMatchers("/payments/*/complete").hasAnyRole("USER", "ADMIN")
                 
                 // All other requests need authentication
                 .anyRequest().authenticated()

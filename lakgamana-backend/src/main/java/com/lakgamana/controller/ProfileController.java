@@ -60,6 +60,7 @@ public class ProfileController {
             // Update user details
             user.setFirstName(request.getFirstName());
             user.setLastName(request.getLastName());
+            user.setEmail(request.getEmail());
             user.setPhone(request.getPhone());
             
             User updatedUser = userService.updateUser(user.getId(), user);

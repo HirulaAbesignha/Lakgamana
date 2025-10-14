@@ -19,6 +19,7 @@ export default function ProfilePage() {
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
+    email: '',
     phone: ''
   });
   const [passwordData, setPasswordData] = useState({
@@ -61,6 +62,7 @@ export default function ProfilePage() {
       setFormData({
         firstName: result.data.firstName,
         lastName: result.data.lastName,
+        email: result.data.email,
         phone: result.data.phone
       });
     } catch (error) {
@@ -108,6 +110,12 @@ export default function ProfilePage() {
     
     if (!formData.lastName.trim()) {
       newErrors.lastName = 'Last name is required';
+    }
+    
+    if (!formData.email.trim()) {
+      newErrors.email = 'Email is required';
+    } else if (!/^[A-Za-z0-9+_.-]+@([A-Za-z0-9.-]+\.[A-Za-z]{2,})$/.test(formData.email)) {
+      newErrors.email = 'Please enter a valid email address';
     }
     
     if (!formData.phone) {
@@ -325,6 +333,14 @@ export default function ProfilePage() {
                       />
                     </div>
                     <Input
+                      label="Email Address"
+                      type="email"
+                      value={formData.email}
+                      onChange={(e) => handleInputChange('email', e.target.value)}
+                      error={errors.email}
+                      required
+                    />
+                    <Input
                       label="Phone Number"
                       type="tel"
                       value={formData.phone}
@@ -343,6 +359,7 @@ export default function ProfilePage() {
                           setFormData({
                             firstName: profile.firstName,
                             lastName: profile.lastName,
+                            email: profile.email,
                             phone: profile.phone
                           });
                           setErrors({});

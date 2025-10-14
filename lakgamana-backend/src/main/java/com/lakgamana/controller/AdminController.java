@@ -50,20 +50,23 @@ public class AdminController {
             long totalTrains = trainService.countActiveTrains();
             long totalReservations = bookingService.countConfirmedBookings() + bookingService.countCancelledBookings();
             long totalUsers = userService.countActiveUsers();
-            Double totalRevenue = paymentService.getTotalRevenue();
+            // Calculate total revenue: completed payments - refunds
+            Double totalTicketAmount = paymentService.getTotalRevenue();
+            Double totalRefunds = paymentService.getTotalRefunds();
+            Double totalRevenue = (totalTicketAmount != null ? totalTicketAmount : 0.0) - (totalRefunds != null ? totalRefunds : 0.0);
             long confirmedBookings = bookingService.countConfirmedBookings();
             long cancelledBookings = bookingService.countCancelledBookings();
             long pendingPayments = paymentService.countPendingPayments();
 
-            // Get recent activities
+            // Get recent activities - show all recent bookings and feedback regardless of status
             List<com.lakgamana.dto.response.BookingResponse> recentBookings = bookingService
-                    .findRecentConfirmedBookings(org.springframework.data.domain.PageRequest.of(0, 5))
+                    .findRecentBookings(org.springframework.data.domain.PageRequest.of(0, 5, org.springframework.data.domain.Sort.by("bookingDate").descending()))
                     .stream()
                     .map(com.lakgamana.dto.response.BookingResponse::fromEntity)
                     .toList();
 
             List<com.lakgamana.dto.response.FeedbackResponse> recentFeedback = feedbackService
-                    .findRecentApprovedFeedback(org.springframework.data.domain.PageRequest.of(0, 5))
+                    .findRecentFeedback(org.springframework.data.domain.PageRequest.of(0, 5, org.springframework.data.domain.Sort.by("submittedDate").descending()))
                     .stream()
                     .map(com.lakgamana.dto.response.FeedbackResponse::fromEntity)
                     .toList();
