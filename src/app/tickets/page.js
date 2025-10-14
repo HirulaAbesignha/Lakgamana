@@ -297,9 +297,47 @@ export default function MyTicketsPage() {
     setSelectedTicket(null);
   };
 
-  const downloadTicket = (ticket) => {
-    // Simulate PDF download
-    alert(`Downloading ticket for ${ticket.bookingId}`);
+  const downloadTicket = async (ticket) => {
+    try {
+      const authData = JSON.parse(localStorage.getItem('lak_auth') || '{}');
+      
+      if (!authData.token) {
+        router.push('/login');
+        return;
+      }
+
+      const response = await fetch(`http://localhost:8081/bookings/${ticket.bookingId}/download-pdf`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${authData.token}`
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to download PDF');
+      }
+
+      // Get the PDF blob
+      const blob = await response.blob();
+      
+      // Create download link
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `booking-ticket-${ticket.bookingId}.pdf`;
+      
+      // Trigger download
+      document.body.appendChild(link);
+      link.click();
+      
+      // Cleanup
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+    } catch (error) {
+      console.error('Error downloading PDF:', error);
+      setError('Failed to download PDF: ' + error.message);
+    }
   };
 
   const getStatusColor = (status) => {

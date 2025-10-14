@@ -55,6 +55,7 @@ com\lakgamana\entity\Booking.class
 com\lakgamana\entity\enums\PaymentMethod.class
 com\lakgamana\dto\response\BookingResponse$PassengerResponse.class
 com\lakgamana\entity\Station.class
+com\lakgamana\service\PdfService.class
 com\lakgamana\controller\PaymentController.class
 com\lakgamana\dto\request\RefundRequest.class
 com\lakgamana\dto\response\DashboardResponse.class

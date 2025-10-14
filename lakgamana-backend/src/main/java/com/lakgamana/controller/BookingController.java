@@ -7,6 +7,7 @@ import com.lakgamana.entity.Booking;
 import com.lakgamana.entity.enums.BookingStatus;
 import com.lakgamana.service.AuthService;
 import com.lakgamana.service.BookingService;
+import com.lakgamana.service.PdfService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -15,6 +16,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -29,12 +32,14 @@ public class BookingController {
 
     private final BookingService bookingService;
     private final AuthService authService;
+    private final PdfService pdfService;
 
     private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(BookingController.class);
 
-    public BookingController(BookingService bookingService, AuthService authService) {
+    public BookingController(BookingService bookingService, AuthService authService, PdfService pdfService) {
         this.bookingService = bookingService;
         this.authService = authService;
+        this.pdfService = pdfService;
     }
 
     @PostMapping
@@ -206,6 +211,28 @@ public class BookingController {
             log.error("Failed to process refund", e);
             return ResponseEntity.badRequest()
                     .body(ApiResponse.error("Failed to process refund: " + e.getMessage()));
+        }
+    }
+
+    @GetMapping("/{bookingId}/download-pdf")
+    @Operation(summary = "Download booking PDF", description = "Generate and download PDF ticket for a booking")
+    @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
+    public ResponseEntity<byte[]> downloadBookingPdf(@PathVariable String bookingId) {
+        try {
+            Booking booking = bookingService.findByBookingId(bookingId);
+            byte[] pdfBytes = pdfService.generateBookingPdf(booking);
+            
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_PDF);
+            headers.setContentDispositionFormData("attachment", "booking-ticket-" + bookingId + ".pdf");
+            headers.setCacheControl("must-revalidate, post-check=0, pre-check=0");
+            
+            return ResponseEntity.ok()
+                    .headers(headers)
+                    .body(pdfBytes);
+        } catch (Exception e) {
+            log.error("Failed to generate PDF for booking: {}", bookingId, e);
+            return ResponseEntity.badRequest().build();
         }
     }
 }
