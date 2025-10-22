@@ -84,6 +84,7 @@ public class SecurityConfig {
                 // Admin endpoints
                 .requestMatchers("/admin/**").hasRole("ADMIN")
                 .requestMatchers("/trains/**").hasRole("ADMIN")
+                .requestMatchers("/routes/**").hasRole("ADMIN")
                 .requestMatchers("/users/**").hasRole("ADMIN")
                 .requestMatchers("/payments/admin/**").hasRole("ADMIN")
                 .requestMatchers("/feedback/admin/**").hasRole("ADMIN")

@@ -182,9 +182,9 @@ export default function AdminTrainsPage() {
       duration: train.duration,
       distance: train.distance,
       pricing: {
-        economy: train.pricing?.economy?.toString() || '',
-        business: train.pricing?.business?.toString() || '',
-        first: train.pricing?.first?.toString() || ''
+        economy: train.pricing?.economyPrice?.toString() || train.pricing?.economy?.toString() || '',
+        business: train.pricing?.businessPrice?.toString() || train.pricing?.business?.toString() || '',
+        first: train.pricing?.firstPrice?.toString() || train.pricing?.first?.toString() || ''
       },
       seatInfo: {
         totalSeats: train.seatInfo?.totalSeats?.toString() || '',
@@ -495,9 +495,9 @@ export default function AdminTrainsPage() {
                       const n = typeof v === 'number' ? v : Number(v);
                       return Number.isFinite(n) ? n : 0;
                     };
-                    const priceEconomy = getNumber(train?.pricing?.economy ?? train?.economy ?? train?.economyPrice);
-                    const priceBusiness = getNumber(train?.pricing?.business ?? train?.business ?? train?.businessPrice);
-                    const priceFirst = getNumber(train?.pricing?.first ?? train?.first ?? train?.firstClassPrice);
+                    const priceEconomy = getNumber(train?.pricing?.economyPrice ?? train?.pricing?.economy ?? train?.economy ?? train?.economyPrice);
+                    const priceBusiness = getNumber(train?.pricing?.businessPrice ?? train?.pricing?.business ?? train?.business ?? train?.businessPrice);
+                    const priceFirst = getNumber(train?.pricing?.firstPrice ?? train?.pricing?.first ?? train?.first ?? train?.firstClassPrice);
                     return (
                     <tr key={train.id} className="border-b border-gray-100 hover:bg-gray-50">
                       <td className="py-3 px-4">

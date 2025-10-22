@@ -3,12 +3,14 @@ package com.lakgamana.service;
 import com.lakgamana.dto.request.BookingRequest;
 import com.lakgamana.dto.request.PassengerRequest;
 import com.lakgamana.entity.Booking;
+import com.lakgamana.entity.Feedback;
 import com.lakgamana.entity.Passenger;
 import com.lakgamana.entity.Payment;
 import com.lakgamana.entity.Train;
 import com.lakgamana.entity.User;
 import com.lakgamana.entity.enums.BookingStatus;
 import com.lakgamana.repository.BookingRepository;
+import com.lakgamana.repository.FeedbackRepository;
 import com.lakgamana.repository.PaymentRepository;
  
 import org.springframework.data.domain.Page;
@@ -18,7 +20,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.UUID;
 
 @Service
 @Transactional
@@ -28,14 +29,16 @@ public class BookingService {
     private final PaymentRepository paymentRepository;
     private final UserService userService;
     private final TrainService trainService;
+    private final FeedbackRepository feedbackRepository;
 
     private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(BookingService.class);
 
-    public BookingService(BookingRepository bookingRepository, PaymentRepository paymentRepository, UserService userService, TrainService trainService) {
+    public BookingService(BookingRepository bookingRepository, PaymentRepository paymentRepository, UserService userService, TrainService trainService, FeedbackRepository feedbackRepository) {
         this.bookingRepository = bookingRepository;
         this.paymentRepository = paymentRepository;
         this.userService = userService;
         this.trainService = trainService;
+        this.feedbackRepository = feedbackRepository;
     }
 
     @Transactional(readOnly = true)
@@ -115,8 +118,15 @@ public class BookingService {
             passenger.setName(passengerRequest.getName());
             passenger.setAge(passengerRequest.getAge());
             passenger.setGender(passengerRequest.getGender());
-            passenger.setIdType(passengerRequest.getIdType());
-            passenger.setIdNumber(passengerRequest.getIdNumber());
+            
+            // Only set ID fields if they are provided (for adults)
+            if (passengerRequest.getIdType() != null) {
+                passenger.setIdType(passengerRequest.getIdType());
+            }
+            if (passengerRequest.getIdNumber() != null && !passengerRequest.getIdNumber().trim().isEmpty()) {
+                passenger.setIdNumber(passengerRequest.getIdNumber());
+            }
+            
             booking.getPassengers().add(passenger);
         }
 
@@ -155,8 +165,6 @@ public class BookingService {
         booking.cancel(reason);
         
         // Update seat availability (release seats)
-        Train train = booking.getTrain();
-        int totalPassengers = booking.getPassengers().size();
         // Note: This is a simplified approach. In production, you might want to track seat numbers
         
         return bookingRepository.save(booking);
@@ -172,8 +180,6 @@ public class BookingService {
         booking.cancel(reason);
         
         // Update seat availability (release seats)
-        Train train = booking.getTrain();
-        int totalPassengers = booking.getPassengers().size();
         // Note: This is a simplified approach. In production, you might want to track seat numbers
         
         return bookingRepository.save(booking);
@@ -223,7 +229,18 @@ public class BookingService {
 
     public void deleteBooking(Long id) {
         Booking booking = findById(id);
+        
+        // First, delete all related feedback records
+        // This prevents foreign key constraint violations
+        List<Feedback> relatedFeedback = feedbackRepository.findByBookingId(id);
+        if (!relatedFeedback.isEmpty()) {
+            log.info("Deleting {} feedback records for booking ID: {}", relatedFeedback.size(), id);
+            feedbackRepository.deleteAll(relatedFeedback);
+        }
+        
+        // Now delete the booking
         bookingRepository.delete(booking);
+        log.info("Successfully deleted booking ID: {}", id);
     }
 
     @Transactional(readOnly = true)

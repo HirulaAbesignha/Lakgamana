@@ -17,6 +17,7 @@ export default function AdminReservationsPage() {
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [filterStatus, setFilterStatus] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -99,6 +100,11 @@ export default function AdminReservationsPage() {
     setIsCancelModalOpen(true);
   };
 
+  const openDeleteModal = (booking) => {
+    setSelectedBooking(booking);
+    setIsDeleteModalOpen(true);
+  };
+
   const handleCancelBooking = async () => {
     if (selectedBooking) {
       try {
@@ -152,6 +158,47 @@ export default function AdminReservationsPage() {
         setError(error.message);
       }
     }
+  };
+
+  const handleDeleteBooking = async () => {
+    if (selectedBooking) {
+      try {
+        const authData = JSON.parse(localStorage.getItem('lak_auth') || '{}');
+        
+        const response = await fetch(`http://localhost:8081/bookings/${selectedBooking.bookingId}`, {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${authData.token}`
+          }
+        });
+
+        if (!response.ok) {
+          let errorMessage = '';
+          try {
+            const responseText = await response.text();
+            try {
+              const errorData = JSON.parse(responseText);
+              errorMessage = errorData.message || JSON.stringify(errorData);
+            } catch {
+              errorMessage = responseText || `HTTP ${response.status}: ${response.statusText}`;
+            }
+          } catch (_) {
+            errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+          }
+          throw new Error(errorMessage || 'Failed to delete booking');
+        }
+
+        // Refresh bookings list
+        await fetchBookings();
+        alert('Booking deleted successfully!');
+      } catch (error) {
+        console.error('Error deleting booking:', error);
+        setError(error.message);
+      }
+    }
+    setIsDeleteModalOpen(false);
+    setSelectedBooking(null);
   };
 
   const getStatusColor = (status) => {
@@ -320,6 +367,17 @@ export default function AdminReservationsPage() {
                             Cancel
                           </Button>
                         )}
+                        <Button
+                          variant="danger"
+                          size="sm"
+                          onClick={() => openDeleteModal(booking)}
+                          className="bg-red-600 hover:bg-red-700 text-white"
+                        >
+                          <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                          Delete
+                        </Button>
                       </div>
                     </td>
                   </tr>
@@ -479,6 +537,45 @@ export default function AdminReservationsPage() {
           </Button>
           <Button variant="danger" onClick={handleCancelBooking}>
             Cancel Booking
+          </Button>
+        </ModalFooter>
+      </Modal>
+
+      {/* Delete Booking Modal */}
+      <Modal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        title="Delete Booking"
+        size="md"
+      >
+        <ModalBody>
+          {selectedBooking && (
+            <div>
+              <p className="text-gray-600 mb-4">
+                Are you sure you want to <strong>permanently delete</strong> booking <strong>{selectedBooking.bookingId}</strong> for <strong>{selectedBooking.user?.firstName} {selectedBooking.user?.lastName}</strong>?
+              </p>
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                <div className="flex">
+                  <svg className="w-5 h-5 text-red-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                  </svg>
+                  <div>
+                    <p className="text-sm text-red-800">
+                      <strong>Warning:</strong> This action will permanently delete the booking from the database. 
+                      This cannot be undone and no refund will be processed automatically.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </ModalBody>
+        <ModalFooter>
+          <Button variant="outline" onClick={() => setIsDeleteModalOpen(false)}>
+            Keep Booking
+          </Button>
+          <Button variant="danger" onClick={handleDeleteBooking} className="bg-red-600 hover:bg-red-700">
+            Delete Permanently
           </Button>
         </ModalFooter>
       </Modal>

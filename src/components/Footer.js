@@ -74,7 +74,7 @@ const Footer = () => {
 
           {/* Quick Links */}
           <div>
-            <h5 className="text-lg font-semibold mb-4">Company</h5>
+            <h5 className="text-lg text-white font-semibold mb-4">Company</h5>
             <ul className="text-sm space-y-2">
               {footerLinks.company.map((link) => (
                 <li key={link.name}>
@@ -90,7 +90,7 @@ const Footer = () => {
           </div>
 
           <div>
-            <h5 className="text-lg font-semibold mb-4">Services</h5>
+            <h5 className="text-lg text-white font-semibold mb-4">Services</h5>
             <ul className="text-sm space-y-2">
               {footerLinks.services.map((link) => (
                 <li key={link.name}>
@@ -106,7 +106,7 @@ const Footer = () => {
           </div>
 
           <div>
-            <h5 className="text-lg font-semibold mb-4">Support</h5>
+            <h5 className="text-lg text-white font-semibold mb-4">Support</h5>
             <ul className="text-sm space-y-2">
               {footerLinks.support.map((link) => (
                 <li key={link.name}>

@@ -14,7 +14,7 @@ const PopularRoutes = () => {
   
   const getPrice = (train) => {
     const p = train?.pricing || {};
-    const val = p.economy ?? train?.economy ?? train?.economyPrice ?? 0;
+    const val = p.economyPrice ?? p.economy ?? train?.economy ?? train?.economyPrice ?? 0;
     const n = Number(val);
     return Number.isFinite(n) ? n : 0;
   };
@@ -48,7 +48,7 @@ const PopularRoutes = () => {
           departureTime: '08:00',
           arrivalTime: '10:30',
           duration: '2h 30m',
-          pricing: { economy: 150 },
+          pricing: { economyPrice: 150 },
           features: ['AC', 'WiFi', 'Food Service'],
           rating: 4.8
         },
@@ -61,7 +61,7 @@ const PopularRoutes = () => {
           departureTime: '09:30',
           arrivalTime: '11:45',
           duration: '2h 15m',
-          pricing: { economy: 120, business: 180, first: 250 },
+          pricing: { economyPrice: 120, businessPrice: 180, firstPrice: 250 },
           features: ['AC', 'WiFi'],
           rating: 4.6
         },
@@ -74,7 +74,7 @@ const PopularRoutes = () => {
           departureTime: '07:00',
           arrivalTime: '10:00',
           duration: '3h 00m',
-          pricing: { economy: 100, business: 150, first: 200 },
+          pricing: { economyPrice: 100, businessPrice: 150, firstPrice: 200 },
           features: ['Scenic Views', 'AC'],
           rating: 4.9
         }
@@ -147,7 +147,7 @@ const PopularRoutes = () => {
         )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {trains.slice(0, 6).map((train, index) => (
+          {trains.slice(0, 3).map((train, index) => (
             <Card 
               key={train.id} 
               hover 
@@ -197,10 +197,10 @@ const PopularRoutes = () => {
 
                 <div className="flex items-center justify-between">
                   <div>
+                    <div className="text-sm text-gray-500 mb-1">Economy price from</div>
                     <span className="text-2xl font-bold text-green-600">
                       {formatCurrency(getPrice(train) || 100)}
                     </span>
-                    <span className="text-sm text-gray-500 ml-1">from</span>
                   </div>
                   <Button 
                     variant="primary" 

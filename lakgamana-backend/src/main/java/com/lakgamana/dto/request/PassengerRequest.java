@@ -21,11 +21,8 @@ public class PassengerRequest {
     @NotNull(message = "Gender is required")
     private Gender gender;
 
-    @NotNull(message = "ID type is required")
     private IdType idType;
 
-    @NotBlank(message = "ID number is required")
-    @Size(max = 50, message = "ID number must not exceed 50 characters")
     private String idNumber;
 
     public PassengerRequest() {}

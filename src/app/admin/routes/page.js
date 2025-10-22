@@ -6,10 +6,12 @@ import Button from '../../../components/ui/button';
 import { Input, TextArea } from '../../../components/ui/input';
 import { StatusBadge } from '../../../components/ui/badge';
 import { Modal, ModalHeader, ModalBody, ModalFooter } from '../../../components/ui/modal';
-import routesData from '../../../data/routes.json';
+import { useEffect } from 'react';
 
 export default function AdminRoutesPage() {
-  const [routes, setRoutes] = useState(routesData);
+  const [routes, setRoutes] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -60,6 +62,30 @@ export default function AdminRoutesPage() {
     }));
   };
 
+  const fetchRoutes = async () => {
+    try {
+      setLoading(true);
+      const authData = JSON.parse(localStorage.getItem('lak_auth') || '{}');
+      const res = await fetch('/backend/routes', {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authData.token}`
+        }
+      });
+      if (!res.ok) throw new Error('Failed to load routes');
+      const data = await res.json();
+      const list = Array.isArray(data.data) ? data.data : data.data?.content || [];
+      setRoutes(list);
+      setError(null);
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { fetchRoutes(); }, []);
+
   const openAddModal = () => {
     setRouteForm({
       name: '',
@@ -100,35 +126,98 @@ export default function AdminRoutesPage() {
     setIsDeleteModalOpen(true);
   };
 
-  const handleAddRoute = () => {
-    const newRoute = {
-      id: `R${String(routes.length + 1).padStart(3, '0')}`,
-      ...routeForm,
-      stations: [
-        { name: routeForm.from, time: '08:00', type: 'departure' },
-        { name: routeForm.to, time: '10:30', type: 'arrival' }
-      ]
-    };
-    setRoutes(prev => [...prev, newRoute]);
-    setIsAddModalOpen(false);
+  const handleAddRoute = async () => {
+    try {
+      const authData = JSON.parse(localStorage.getItem('lak_auth') || '{}');
+      const body = {
+        name: routeForm.name,
+        fromStation: routeForm.from,
+        toStation: routeForm.to,
+        distance: routeForm.distance,
+        duration: routeForm.duration,
+        status: routeForm.status?.toUpperCase() === 'INACTIVE' ? 'INACTIVE' : 'ACTIVE',
+        schedule: {
+          monday: !!routeForm.schedule.monday,
+          tuesday: !!routeForm.schedule.tuesday,
+          wednesday: !!routeForm.schedule.wednesday,
+          thursday: !!routeForm.schedule.thursday,
+          friday: !!routeForm.schedule.friday,
+          saturday: !!routeForm.schedule.saturday,
+          sunday: !!routeForm.schedule.sunday,
+        }
+      };
+      const res = await fetch('/backend/routes', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authData.token}`
+        },
+        body: JSON.stringify(body)
+      });
+      if (!res.ok) {
+        const txt = await res.text();
+        throw new Error(txt || 'Failed to create route');
+      }
+      setIsAddModalOpen(false);
+      await fetchRoutes();
+    } catch (e) {
+      setError(e.message);
+    }
   };
 
-  const handleEditRoute = () => {
-    setRoutes(prev => 
-      prev.map(route => 
-        route.id === selectedRoute.id 
-          ? { ...route, ...routeForm }
-          : route
-      )
-    );
-    setIsEditModalOpen(false);
-    setSelectedRoute(null);
+  const handleEditRoute = async () => {
+    try {
+      if (!selectedRoute) return;
+      const authData = JSON.parse(localStorage.getItem('lak_auth') || '{}');
+      const body = {
+        name: routeForm.name,
+        fromStation: routeForm.from,
+        toStation: routeForm.to,
+        distance: routeForm.distance,
+        duration: routeForm.duration,
+        status: routeForm.status?.toUpperCase() === 'INACTIVE' ? 'INACTIVE' : 'ACTIVE',
+        schedule: routeForm.schedule
+      };
+      const res = await fetch(`/backend/routes/${selectedRoute.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authData.token}`
+        },
+        body: JSON.stringify(body)
+      });
+      if (!res.ok) {
+        const txt = await res.text();
+        throw new Error(txt || 'Failed to update route');
+      }
+      setIsEditModalOpen(false);
+      setSelectedRoute(null);
+      await fetchRoutes();
+    } catch (e) {
+      setError(e.message);
+    }
   };
 
-  const handleDeleteRoute = () => {
-    setRoutes(prev => prev.filter(route => route.id !== selectedRoute.id));
-    setIsDeleteModalOpen(false);
-    setSelectedRoute(null);
+  const handleDeleteRoute = async () => {
+    try {
+      if (!selectedRoute) return;
+      const authData = JSON.parse(localStorage.getItem('lak_auth') || '{}');
+      const res = await fetch(`/backend/routes/${selectedRoute.id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${authData.token}`
+        }
+      });
+      if (!res.ok) {
+        const txt = await res.text();
+        throw new Error(txt || 'Failed to delete route');
+      }
+      setIsDeleteModalOpen(false);
+      setSelectedRoute(null);
+      await fetchRoutes();
+    } catch (e) {
+      setError(e.message);
+    }
   };
 
   const getStatusColor = (status) => {
@@ -151,6 +240,9 @@ export default function AdminRoutesPage() {
 
   return (
     <div className="space-y-6">
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded p-3 text-red-700">{error}</div>
+      )}
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
@@ -169,6 +261,9 @@ export default function AdminRoutesPage() {
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
+            {loading ? (
+              <div className="p-6 text-gray-600">Loading routes...</div>
+            ) : (
             <table className="w-full">
               <thead>
                 <tr className="border-b border-gray-200">
@@ -191,7 +286,7 @@ export default function AdminRoutesPage() {
                       </div>
                     </td>
                     <td className="py-3 px-4">
-                      <p className="text-gray-900">{route.from} → {route.to}</p>
+                      <p className="text-gray-900">{route.fromStation} → {route.toStation}</p>
                     </td>
                     <td className="py-3 px-4">
                       <p className="text-gray-900">{route.distance}</p>
@@ -205,7 +300,7 @@ export default function AdminRoutesPage() {
                           <span
                             key={day.key}
                             className={`w-6 h-6 rounded-full text-xs flex items-center justify-center ${
-                              route.schedule[day.key] 
+                              route.schedule?.[day.key] 
                                 ? 'bg-green-100 text-green-800' 
                                 : 'bg-gray-100 text-gray-400'
                             }`}
@@ -217,7 +312,7 @@ export default function AdminRoutesPage() {
                       </div>
                     </td>
                     <td className="py-3 px-4">
-                      <StatusBadge status={getStatusColor(route.status)} />
+                      <StatusBadge status={getStatusColor(String(route.status).toLowerCase())} />
                     </td>
                     <td className="py-3 px-4">
                       <div className="flex space-x-2">
@@ -241,6 +336,7 @@ export default function AdminRoutesPage() {
                 ))}
               </tbody>
             </table>
+            )}
           </div>
         </CardContent>
       </Card>

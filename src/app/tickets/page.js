@@ -34,7 +34,7 @@ export default function MyTicketsPage() {
         return;
       }
 
-      const response = await fetch('http://localhost:8081/bookings/user', {
+      const response = await fetch('/backend/bookings/user', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -100,7 +100,7 @@ export default function MyTicketsPage() {
       try {
         const authData = JSON.parse(localStorage.getItem('lak_auth') || '{}');
         
-        const response = await fetch('http://localhost:8081/feedback', {
+        const response = await fetch('/backend/feedback', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -149,7 +149,7 @@ export default function MyTicketsPage() {
       try {
         const authData = JSON.parse(localStorage.getItem('lak_auth') || '{}');
         
-        const response = await fetch('http://localhost:8081/bookings/refund', {
+        const response = await fetch('/backend/bookings/refund', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -214,7 +214,7 @@ export default function MyTicketsPage() {
           return;
         }
         
-        const response = await fetch(`http://localhost:8081/bookings/${bookingId}/cancel?reason=Deleted by user`, {
+        const response = await fetch(`/backend/bookings/${bookingId}/cancel?reason=Deleted by user`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
@@ -248,6 +248,16 @@ export default function MyTicketsPage() {
     }
   };
 
+  const handleRemoveFromView = (ticket) => {
+    if (confirm(`Are you sure you want to delete this ticket from your view?\n\nTicket: ${ticket.train?.name || 'N/A'}\nBooking ID: ${ticket.bookingId}\n\nThis will only remove it from your tickets list, but the booking will remain in the system and can be viewed by administrators.`)) {
+      // Remove ticket from the local state without affecting the database
+      setTickets(prevTickets => prevTickets.filter(t => t.id !== ticket.id));
+      
+      // Show success message
+      alert('Ticket has been deleted from your view successfully!');
+    }
+  };
+
   const confirmCancel = async () => {
     if (selectedTicket?.status !== 'PENDING') {
       setError('Only pending bookings can be cancelled.');
@@ -259,7 +269,7 @@ export default function MyTicketsPage() {
       try {
         const authData = JSON.parse(localStorage.getItem('lak_auth') || '{}');
         
-        const response = await fetch(`http://localhost:8081/bookings/${selectedTicket.bookingId}/cancel?reason=Cancelled by user`, {
+        const response = await fetch(`/backend/bookings/${selectedTicket.bookingId}/cancel?reason=Cancelled by user`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
@@ -306,7 +316,7 @@ export default function MyTicketsPage() {
         return;
       }
 
-      const response = await fetch(`http://localhost:8081/bookings/${ticket.bookingId}/download-pdf`, {
+      const response = await fetch(`/backend/bookings/${ticket.bookingId}/download-pdf`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${authData.token}`
@@ -396,94 +406,127 @@ export default function MyTicketsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
+    <div className="min-h-screen py-8" style={{ background: 'var(--gradient-warm)' }}>
       <div className="container-custom">
         <div className="max-w-6xl mx-auto">
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">My Tickets</h1>
-            <p className="text-gray-600">Manage your train bookings and reservations</p>
+          <div className="mb-12 animate-fade-in">
+            <h1 className="text-4xl font-bold mb-3 animate-slide-up" style={{ color: 'var(--text-primary)' }}>
+              My Tickets
+            </h1>
+            <p className="text-lg animate-slide-up animate-stagger-1" style={{ color: 'var(--text-secondary)' }}>
+              Manage your train bookings and reservations
+            </p>
+            <div className="mt-6 glass rounded-2xl p-6 animate-slide-up animate-stagger-2">
+              <div className="flex items-start">
+                <div className="w-8 h-8 rounded-full flex items-center justify-center mr-3 mt-0.5 animate-bounce-in"
+                     style={{ background: 'var(--gradient-secondary)' }}>
+                  <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                    <strong>Tip:</strong> Use "Delete" to remove tickets from your list without affecting the booking. 
+                    Use "Cancel Booking" only if you want to actually cancel the reservation.
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
 
           {tickets.length === 0 ? (
-            <Card className="text-center py-12">
+            <Card className="text-center py-16 animate-bounce-in">
               <CardContent>
-                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 animate-scale-in"
+                     style={{ background: 'var(--gradient-primary)' }}>
+                  <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                   </svg>
                 </div>
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">No tickets found</h3>
-                <p className="text-gray-600 mb-6">You haven&apos;t made any bookings yet.</p>
-                <Button onClick={() => window.location.href = '/booking'}>
+                <h3 className="text-2xl font-semibold mb-3 animate-fade-in animate-stagger-1" style={{ color: 'var(--text-primary)' }}>
+                  No tickets found
+                </h3>
+                <p className="text-lg mb-8 animate-fade-in animate-stagger-2" style={{ color: 'var(--text-secondary)' }}>
+                  You haven&apos;t made any bookings yet.
+                </p>
+                <Button 
+                  onClick={() => window.location.href = '/booking'}
+                  className="animate-fade-in animate-stagger-3 hover:scale-105 transition-transform duration-300"
+                >
                   Book Your First Ticket
                 </Button>
               </CardContent>
             </Card>
           ) : (
-            <div className="space-y-6">
-              {tickets.map((ticket) => (
-                <Card key={ticket.id} hover>
-                  <CardContent className="p-6">
+            <div className="space-y-8">
+              {tickets.map((ticket, index) => (
+                <Card key={ticket.id} className="animate-slide-up animate-stagger-1"
+                      style={{ animationDelay: `${index * 0.1}s` }}>
+                  <CardContent className="p-8">
                     <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
                       <div className="flex-1">
-                        <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center justify-between mb-6">
                           <div>
-                            <h3 className="text-xl font-semibold text-gray-900">
+                            <h3 className="text-2xl font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>
                               {ticket.train.name}
                             </h3>
-                            <p className="text-gray-600">{ticket.train.fromStation} → {ticket.train.toStation}</p>
+                            <p className="text-lg" style={{ color: 'var(--text-secondary)' }}>
+                              {ticket.train.fromStation} → {ticket.train.toStation}
+                            </p>
                           </div>
                           <StatusBadge status={getStatusColor(ticket.status.toLowerCase())}>
                             {getStatusText(ticket.status)}
                           </StatusBadge>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
-                          <div>
-                            <p className="text-sm text-gray-500">Booking ID</p>
-                            <p className="font-medium">{ticket.bookingId}</p>
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+                          <div className="glass rounded-xl p-4 animate-fade-in animate-stagger-2">
+                            <p className="text-sm font-medium mb-2" style={{ color: 'var(--text-muted)' }}>Booking ID</p>
+                            <p className="font-semibold text-lg" style={{ color: 'var(--text-primary)' }}>{ticket.bookingId}</p>
                           </div>
-                          <div>
-                            <p className="text-sm text-gray-500">Journey Date</p>
-                            <p className="font-medium">{formatDate(ticket.departureDate)}</p>
+                          <div className="glass rounded-xl p-4 animate-fade-in animate-stagger-3">
+                            <p className="text-sm font-medium mb-2" style={{ color: 'var(--text-muted)' }}>Journey Date</p>
+                            <p className="font-semibold text-lg" style={{ color: 'var(--text-primary)' }}>{formatDate(ticket.departureDate)}</p>
                           </div>
-                          <div>
-                            <p className="text-sm text-gray-500">Departure Time</p>
-                            <p className="font-medium">
+                          <div className="glass rounded-xl p-4 animate-fade-in animate-stagger-4">
+                            <p className="text-sm font-medium mb-2" style={{ color: 'var(--text-muted)' }}>Departure Time</p>
+                            <p className="font-semibold text-lg" style={{ color: 'var(--text-primary)' }}>
                               {formatTime(ticket.departureTime)} - {formatTime(ticket.arrivalTime)}
                             </p>
                           </div>
-                          <div>
-                            <p className="text-sm text-gray-500">Seat</p>
-                            <p className="font-medium">
+                          <div className="glass rounded-xl p-4 animate-fade-in animate-stagger-5">
+                            <p className="text-sm font-medium mb-2" style={{ color: 'var(--text-muted)' }}>Seat</p>
+                            <p className="font-semibold text-lg" style={{ color: 'var(--text-primary)' }}>
                               {ticket.seatNumber} ({ticket.seatClass})
                             </p>
                           </div>
                         </div>
 
                         <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-4">
-                            <div>
-                              <p className="text-sm text-gray-500">Total Amount</p>
-                              <p className="text-lg font-semibold text-gray-900">
+                          <div className="flex items-center space-x-8">
+                            <div className="animate-fade-in animate-stagger-6">
+                              <p className="text-sm font-medium mb-1" style={{ color: 'var(--text-muted)' }}>Total Amount</p>
+                              <p className="text-2xl font-bold" style={{ color: 'var(--primary)' }}>
                                 {formatCurrency(ticket.totalAmount)}
                               </p>
                             </div>
-                            <div>
-                              <p className="text-sm text-gray-500">Passengers</p>
-                              <p className="font-medium">{ticket.passengers?.length || 0}</p>
+                            <div className="animate-fade-in animate-stagger-7">
+                              <p className="text-sm font-medium mb-1" style={{ color: 'var(--text-muted)' }}>Passengers</p>
+                              <p className="text-xl font-semibold" style={{ color: 'var(--text-primary)' }}>
+                                {ticket.passengers?.length || 0}
+                              </p>
                             </div>
                           </div>
                         </div>
                       </div>
 
-                      <div className="lg:ml-6 mt-4 lg:mt-0">
-                        <div className="flex flex-col space-y-2">
+                      <div className="lg:ml-8 mt-6 lg:mt-0">
+                        <div className="flex flex-col space-y-3">
                           <Button
                             variant="outline"
                             size="sm"
                             onClick={() => downloadTicket(ticket)}
-                            className="w-full lg:w-auto"
+                            className="w-full lg:w-auto hover:scale-105 transition-transform duration-300 animate-fade-in animate-stagger-8"
                           >
                             <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -495,7 +538,7 @@ export default function MyTicketsPage() {
                             variant="outline"
                             size="sm"
                             onClick={() => handleFeedback(ticket)}
-                            className="w-full lg:w-auto"
+                            className="w-full lg:w-auto hover:scale-105 transition-transform duration-300 animate-fade-in animate-stagger-9"
                           >
                             <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
@@ -503,12 +546,29 @@ export default function MyTicketsPage() {
                             Feedback
                           </Button>
 
+                          <Button
+                            variant="danger"
+                            size="sm"
+                            onClick={() => handleRemoveFromView(ticket)}
+                            className="w-full lg:w-auto hover:scale-105 transition-transform duration-300 animate-fade-in animate-stagger-10"
+                          >
+                            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                            Delete
+                          </Button>
+
                           {(ticket.status?.toUpperCase() === 'PENDING') && (
                             <Button
                               variant="outline"
                               size="sm"
                               onClick={() => handleRefund(ticket)}
-                              className="w-full lg:w-auto bg-red-50 border-red-200 text-red-700 hover:bg-red-100"
+                              className="w-full lg:w-auto hover:scale-105 transition-transform duration-300 animate-fade-in animate-stagger-11"
+                              style={{ 
+                                background: 'rgba(197, 48, 48, 0.1)',
+                                borderColor: 'var(--error)',
+                                color: 'var(--error)'
+                              }}
                             >
                               <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
@@ -523,7 +583,7 @@ export default function MyTicketsPage() {
                                 variant="outline"
                                 size="sm"
                                 onClick={() => handleEditTicket(ticket)}
-                                className="w-full lg:w-auto"
+                                className="w-full lg:w-auto hover:scale-105 transition-transform duration-300 animate-fade-in animate-stagger-12"
                               >
                                 <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -535,7 +595,7 @@ export default function MyTicketsPage() {
                                 variant="outline"
                                 size="sm"
                                 onClick={() => handleRescheduleTicket(ticket)}
-                                className="w-full lg:w-auto"
+                                className="w-full lg:w-auto hover:scale-105 transition-transform duration-300 animate-fade-in animate-stagger-13"
                               >
                                 <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -547,24 +607,12 @@ export default function MyTicketsPage() {
                                 variant="danger"
                                 size="sm"
                                 onClick={() => handleCancelTicket(ticket)}
-                                className="w-full lg:w-auto"
+                                className="w-full lg:w-auto hover:scale-105 transition-transform duration-300 animate-fade-in animate-stagger-14"
                               >
                                 <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                                 </svg>
-                                Cancel
-                              </Button>
-
-                              <Button
-                                variant="danger"
-                                size="sm"
-                                onClick={() => handleDeleteTicket(ticket)}
-                                className="w-full lg:w-auto"
-                              >
-                                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                </svg>
-                                Delete
+                                Cancel Booking
                               </Button>
                             </>
                           )}

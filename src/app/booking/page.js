@@ -44,9 +44,9 @@ function BookingForm() {
   const getPrice = (train, seat) => {
     const pricing = train?.pricing || {};
     const map = {
-      economy: pricing.economy ?? train?.economy ?? train?.economyPrice ?? 0,
-      business: pricing.business ?? train?.business ?? train?.businessPrice ?? 0,
-      first: pricing.first ?? train?.first ?? train?.firstClassPrice ?? 0,
+      economy: pricing.economyPrice ?? pricing.economy ?? train?.economy ?? train?.economyPrice ?? 0,
+      business: pricing.businessPrice ?? pricing.business ?? train?.business ?? train?.businessPrice ?? 0,
+      first: pricing.firstPrice ?? pricing.first ?? train?.first ?? train?.firstClassPrice ?? 0,
     };
     const n = Number(map[seat]);
     return Number.isFinite(n) ? n : 0;
@@ -120,14 +120,22 @@ function BookingForm() {
 
   // Initialize passenger details
   useEffect(() => {
-    const totalPassengers = (parseInt(searchForm.adults) || 0) + (parseInt(searchForm.children) || 0);
-    const details = Array.from({ length: totalPassengers }, (_, index) => ({
-      name: '',
-      age: '',
-      gender: '',
-      idType: '',
-      idNumber: ''
-    }));
+    const adultsCount = parseInt(searchForm.adults) || 0;
+    const childrenCount = parseInt(searchForm.children) || 0;
+    const totalPassengers = adultsCount + childrenCount;
+    
+    const details = Array.from({ length: totalPassengers }, (_, index) => {
+      // First passengers are adults, then children
+      const isAdult = index < adultsCount;
+      return {
+        name: '',
+        age: '',
+        gender: '',
+        passengerType: isAdult ? 'adult' : 'child', // Add passenger type
+        idType: '',
+        idNumber: ''
+      };
+    });
     setPassengerDetails(details);
   }, [searchForm.adults, searchForm.children]);
 
@@ -151,7 +159,21 @@ function BookingForm() {
   };
 
   const proceedToPayment = () => {
-    if (passengerDetails.every(p => p.name && p.age && p.gender && p.idType && p.idNumber)) {
+    // Check if all required fields are filled
+    const isValid = passengerDetails.every(p => {
+      const basicFields = p.name && p.age && p.gender;
+      const isChild = p.passengerType === 'child';
+      
+      // For children, only basic fields are required
+      if (isChild) {
+        return basicFields;
+      }
+      
+      // For adults, ID fields are also required
+      return basicFields && p.idType && p.idNumber;
+    });
+    
+    if (isValid) {
       // Redirect to payment page with booking details
       const bookingData = {
         train: selectedTrain,
@@ -431,60 +453,95 @@ function BookingForm() {
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-6">
-                        {passengerDetails.map((passenger, index) => (
-                          <div key={index} className="border rounded-lg p-4">
-                            <h4 className="font-medium mb-4">Passenger {index + 1}</h4>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                              <Input
-                                label="Full Name"
-                                value={passenger.name}
-                                onChange={(e) => handlePassengerChange(index, 'name', e.target.value)}
-                                required
-                              />
-                              <Input
-                                label="Age"
-                                type="number"
-                                value={passenger.age}
-                                onChange={(e) => handlePassengerChange(index, 'age', e.target.value)}
-                                min="1"
-                                max="120"
-                                required
-                              />
-                              <Select
-                                label="Gender"
-                                value={passenger.gender}
-                                onChange={(e) => handlePassengerChange(index, 'gender', e.target.value)}
-                                options={[
-                                  { value: '', label: 'Select Gender' },
-                                  { value: 'male', label: 'Male' },
-                                  { value: 'female', label: 'Female' },
-                                  { value: 'other', label: 'Other' }
-                                ]}
-                                required
-                              />
-                              <Select
-                                label="ID Type"
-                                value={passenger.idType}
-                                onChange={(e) => handlePassengerChange(index, 'idType', e.target.value)}
-                                options={[
-                                  { value: '', label: 'Select ID Type' },
-                                  { value: 'passport', label: 'Passport' },
-                                  { value: 'driving_license', label: 'Driving License' },
-                                  { value: 'national_id', label: 'National ID' }
-                                ]}
-                                required
-                              />
-                              <div className="md:col-span-2">
+                        {passengerDetails.map((passenger, index) => {
+                          const isChild = passenger.passengerType === 'child';
+                          const isAdult = passenger.passengerType === 'adult';
+                          
+                          return (
+                            <div key={index} className="border rounded-lg p-4">
+                              <h4 className="font-medium mb-4">
+                                Passenger {index + 1} - {isAdult ? 'Adult' : 'Child'}
+                                {isChild && <span className="text-sm text-blue-600 ml-2">(No ID Required)</span>}
+                              </h4>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <Input
-                                  label="ID Number"
-                                  value={passenger.idNumber}
-                                  onChange={(e) => handlePassengerChange(index, 'idNumber', e.target.value)}
+                                  label="Full Name"
+                                  value={passenger.name}
+                                  onChange={(e) => handlePassengerChange(index, 'name', e.target.value)}
                                   required
                                 />
+                                <Input
+                                  label="Age"
+                                  type="number"
+                                  value={passenger.age}
+                                  onChange={(e) => handlePassengerChange(index, 'age', e.target.value)}
+                                  min="1"
+                                  max="120"
+                                  required
+                                />
+                                <Select
+                                  label="Gender"
+                                  value={passenger.gender}
+                                  onChange={(e) => handlePassengerChange(index, 'gender', e.target.value)}
+                                  options={[
+                                    { value: '', label: 'Select Gender' },
+                                    { value: 'male', label: 'Male' },
+                                    { value: 'female', label: 'Female' },
+                                    { value: 'other', label: 'Other' }
+                                  ]}
+                                  required
+                                />
+                                
+                                {/* Only show ID fields for adults */}
+                                {isAdult && (
+                                  <>
+                                    <Select
+                                      label="ID Type"
+                                      value={passenger.idType}
+                                      onChange={(e) => handlePassengerChange(index, 'idType', e.target.value)}
+                                      options={[
+                                        { value: '', label: 'Select ID Type' },
+                                        { value: 'passport', label: 'Passport' },
+                                        { value: 'driving_license', label: 'Driving License' },
+                                        { value: 'national_id', label: 'National ID' }
+                                      ]}
+                                      required
+                                    />
+                                    <div className="md:col-span-2">
+                                      <Input
+                                        label="ID Number (10 digits)"
+                                        value={passenger.idNumber}
+                                        onChange={(e) => handlePassengerChange(index, 'idNumber', e.target.value)}
+                                        placeholder="Enter exactly 10 digits"
+                                        maxLength="10"
+                                        pattern="[0-9]{10}"
+                                        required
+                                      />
+                                    </div>
+                                  </>
+                                )}
+                                
+                                {/* Show info message for children */}
+                                {isChild && (
+                                  <div className="md:col-span-2">
+                                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                                      <div className="flex">
+                                        <svg className="w-5 h-5 text-blue-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                                        </svg>
+                                        <div>
+                                          <p className="text-sm text-blue-800">
+                                            <strong>Child Passenger:</strong> Children under 18 years old do not require ID documents for travel.
+                                          </p>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                )}
                               </div>
                             </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                       
                       <div className="mt-8 text-center">

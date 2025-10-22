@@ -53,7 +53,7 @@ const Hero = () => {
         <div className="max-w-4xl mx-auto text-center">
           {/* Hero Content */}
           <div className="animate-fade-in">
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6">
+            <h1 className="text-4xl md:text-5xl lg:text-6xl text-white font-bold mb-6">
               Journey Across{' '}
               <span className="text-green-400">Beautiful Sri Lanka</span>
             </h1>

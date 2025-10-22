@@ -26,6 +26,8 @@ public interface FeedbackRepository extends JpaRepository<Feedback, Long> {
 
     List<Feedback> findByCategory(FeedbackCategory category);
 
+    List<Feedback> findByBookingId(Long bookingId);
+
     @Query("SELECT f FROM Feedback f WHERE " +
            "(:userName IS NULL OR LOWER(f.user.firstName) LIKE LOWER(CONCAT('%', :userName, '%')) OR " +
            "LOWER(f.user.lastName) LIKE LOWER(CONCAT('%', :userName, '%'))) AND " +

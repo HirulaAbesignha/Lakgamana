@@ -5,6 +5,7 @@ import com.lakgamana.entity.enums.IdType;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 import org.springframework.data.annotation.CreatedDate;
@@ -41,12 +42,11 @@ public class Passenger {
     private Gender gender;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "id_type", nullable = false)
+    @Column(name = "id_type", nullable = true)
     private IdType idType;
 
-    @NotBlank(message = "ID number is required")
-    @Size(max = 50, message = "ID number must not exceed 50 characters")
-    @Column(name = "id_number", nullable = false)
+    @Pattern(regexp = "^\\d{10}$", message = "ID number must be exactly 10 digits")
+    @Column(name = "id_number", nullable = true)
     private String idNumber;
 
     @CreatedDate

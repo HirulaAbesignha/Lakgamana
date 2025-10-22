@@ -102,18 +102,26 @@ export default function PaymentPage() {
         adultsCount: bookingData.adultsCount,
         childrenCount: bookingData.childrenCount,
         totalAmount: totals.grand,
-        passengers: bookingData.passengers.map(passenger => ({
-          name: passenger.name,
-          age: parseInt(passenger.age),
-          gender: mapGenderToEnum(passenger.gender),
-          idType: mapIdTypeToEnum(passenger.idType),
-          idNumber: passenger.idNumber
-        }))
+        passengers: bookingData.passengers.map(passenger => {
+          const isChild = passenger.passengerType === 'child';
+          
+          return {
+            name: passenger.name,
+            age: parseInt(passenger.age),
+            gender: mapGenderToEnum(passenger.gender),
+            // Only include ID fields for adults
+            ...(isChild ? {} : {
+              idType: mapIdTypeToEnum(passenger.idType),
+              idNumber: passenger.idNumber
+            })
+          };
+        })
       };
 
       console.log('Sending booking request:', bookingRequest);
       console.log('Auth token:', authData.token ? 'Present' : 'Missing');
       console.log('Original train data:', bookingData.train);
+      console.log('Passenger details:', bookingRequest.passengers);
 
       // Create booking
       const bookingResponse = await fetch('http://localhost:8081/bookings', {
