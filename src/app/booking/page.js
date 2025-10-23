@@ -201,7 +201,7 @@ function BookingForm() {
   const today = new Date().toISOString().split('T')[0];
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
+    <div className="min-h-screen py-8 pt-24" style={{ background: 'var(--gradient-warm)' }}>
       <div className="container-custom">
         <div className="max-w-6xl mx-auto">
           {/* Progress Steps */}

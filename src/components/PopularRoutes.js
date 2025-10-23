@@ -195,8 +195,8 @@ const PopularRoutes = () => {
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between">
-                  <div>
+                <div className="flex flex-col space-y-4">
+                  <div className="text-center">
                     <div className="text-sm text-gray-500 mb-1">Economy price from</div>
                     <span className="text-2xl font-bold text-green-600">
                       {formatCurrency(getPrice(train) || 100)}
@@ -206,6 +206,7 @@ const PopularRoutes = () => {
                     variant="primary" 
                     size="sm"
                     onClick={() => handleBookNow(train.id)}
+                    className="w-full hover:scale-105 transition-transform duration-300"
                   >
                     Book Now
                   </Button>

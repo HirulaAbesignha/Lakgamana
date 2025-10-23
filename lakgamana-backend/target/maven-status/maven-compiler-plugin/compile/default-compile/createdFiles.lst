@@ -7,6 +7,7 @@ com\lakgamana\controller\AdminController.class
 com\lakgamana\controller\BookingController$BookingStatsResponse.class
 com\lakgamana\controller\AdminController$UserResponse.class
 com\lakgamana\dto\request\FeedbackRequest.class
+com\lakgamana\strategy\UPIPaymentStrategy.class
 com\lakgamana\entity\enums\SeatClass.class
 com\lakgamana\entity\Train.class
 com\lakgamana\service\TrainService.class
@@ -14,10 +15,13 @@ com\lakgamana\entity\enums\UserRole.class
 com\lakgamana\dto\response\DashboardResponse$DashboardStats.class
 com\lakgamana\entity\enums\TrainStatus.class
 com\lakgamana\repository\TicketRepository.class
+com\lakgamana\observer\PaymentSubject.class
 com\lakgamana\security\JwtAuthenticationFilter.class
 com\lakgamana\controller\TrainController$TrainStatsResponse.class
 com\lakgamana\dto\response\AuthResponse$UserResponse.class
 com\lakgamana\security\UserPrincipal.class
+com\lakgamana\strategy\PaymentStrategy.class
+com\lakgamana\strategy\PaymentStrategyFactory.class
 com\lakgamana\dto\response\FeedbackResponse.class
 com\lakgamana\entity\Feedback.class
 com\lakgamana\service\PdfService.class
@@ -36,13 +40,16 @@ com\lakgamana\entity\Train$SeatInfo.class
 com\lakgamana\repository\RouteRepository.class
 com\lakgamana\dto\response\TrainResponse$PricingResponse.class
 com\lakgamana\controller\AuthController.class
+com\lakgamana\observer\EmailNotificationObserver.class
 com\lakgamana\service\BookingService.class
+com\lakgamana\service\EnhancedPaymentService.class
 com\lakgamana\dto\response\PaymentResponse.class
 com\lakgamana\dto\request\LoginRequest.class
 com\lakgamana\controller\TicketController$TicketResponse.class
 com\lakgamana\controller\TrainController$StationResponse.class
 com\lakgamana\dto\request\PaymentRequest.class
 com\lakgamana\service\PaymentService.class
+com\lakgamana\observer\PaymentObserver.class
 com\lakgamana\dto\request\TrainSearchRequest.class
 com\lakgamana\entity\Passenger.class
 com\lakgamana\entity\enums\TrainType.class
@@ -67,6 +74,7 @@ com\lakgamana\service\FeedbackService.class
 com\lakgamana\repository\PaymentRepository.class
 com\lakgamana\controller\BookingController.class
 com\lakgamana\repository\TrainRepository.class
+com\lakgamana\service\EmailService.class
 com\lakgamana\controller\ProfileController$UserStatsResponse.class
 com\lakgamana\dto\response\AuthResponse.class
 com\lakgamana\entity\enums\IdType.class
@@ -74,6 +82,7 @@ com\lakgamana\dto\response\ApiResponse.class
 com\lakgamana\dto\response\PaymentResponse$UserResponse.class
 com\lakgamana\dto\request\RegisterRequest.class
 com\lakgamana\dto\request\PassengerRequest.class
+com\lakgamana\strategy\CreditCardPaymentStrategy.class
 com\lakgamana\controller\TrainController.class
 com\lakgamana\entity\Payment.class
 com\lakgamana\entity\User$UserPreferences.class
@@ -92,6 +101,8 @@ com\lakgamana\entity\Route.class
 com\lakgamana\controller\ProfileController$ProfileResponse.class
 com\lakgamana\entity\User.class
 com\lakgamana\config\OpenApiConfig.class
+com\lakgamana\config\EmailConfig.class
+com\lakgamana\strategy\WalletPaymentStrategy.class
 com\lakgamana\controller\TicketController.class
 com\lakgamana\entity\enums\FeedbackCategory.class
 com\lakgamana\entity\Train$Pricing.class

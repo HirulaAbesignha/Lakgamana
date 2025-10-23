@@ -350,7 +350,7 @@ const Navbar = () => {
               </div>
             )}
             <Button
-              variant="primary"
+              variant="secondary"
               size="sm"
               onClick={() => router.push('/booking')}
               className="hover:scale-105 transition-transform duration-300 animate-fade-in animate-stagger-5"

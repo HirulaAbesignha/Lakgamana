@@ -406,7 +406,7 @@ export default function MyTicketsPage() {
   }
 
   return (
-    <div className="min-h-screen py-8" style={{ background: 'var(--gradient-warm)' }}>
+    <div className="min-h-screen py-8 pt-24" style={{ background: 'var(--gradient-warm)' }}>
       <div className="container-custom">
         <div className="max-w-6xl mx-auto">
           <div className="mb-12 animate-fade-in">
