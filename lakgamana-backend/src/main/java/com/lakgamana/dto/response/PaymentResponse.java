@@ -12,6 +12,7 @@ public class PaymentResponse {
     private Long id;
     private String paymentId;
     private String bookingId;
+    private BookingResponse booking;
     private UserResponse user;
     private Double amount;
     private String currency;
@@ -49,6 +50,25 @@ public class PaymentResponse {
         public void setEmail(String email) { this.email = email; }
     }
 
+    public static class BookingResponse {
+        private Long id;
+        private String bookingId;
+        private String trainName;
+        private String route;
+        private String departureDate;
+        public BookingResponse() {}
+        public Long getId() { return id; }
+        public void setId(Long id) { this.id = id; }
+        public String getBookingId() { return bookingId; }
+        public void setBookingId(String bookingId) { this.bookingId = bookingId; }
+        public String getTrainName() { return trainName; }
+        public void setTrainName(String trainName) { this.trainName = trainName; }
+        public String getRoute() { return route; }
+        public void setRoute(String route) { this.route = route; }
+        public String getDepartureDate() { return departureDate; }
+        public void setDepartureDate(String departureDate) { this.departureDate = departureDate; }
+    }
+
     public PaymentResponse() {}
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -56,6 +76,8 @@ public class PaymentResponse {
     public void setPaymentId(String paymentId) { this.paymentId = paymentId; }
     public String getBookingId() { return bookingId; }
     public void setBookingId(String bookingId) { this.bookingId = bookingId; }
+    public BookingResponse getBooking() { return booking; }
+    public void setBooking(BookingResponse booking) { this.booking = booking; }
     public UserResponse getUser() { return user; }
     public void setUser(UserResponse user) { this.user = user; }
     public Double getAmount() { return amount; }
@@ -96,6 +118,17 @@ public class PaymentResponse {
         res.setId(payment.getId());
         res.setPaymentId(payment.getPaymentId());
         res.setBookingId(payment.getBooking().getBookingId());
+        
+        // Set booking details
+        BookingResponse br = new BookingResponse();
+        br.setId(payment.getBooking().getId());
+        br.setBookingId(payment.getBooking().getBookingId());
+        br.setTrainName(payment.getBooking().getTrain().getName());
+        br.setRoute(payment.getBooking().getTrain().getRoute());
+        br.setDepartureDate(payment.getBooking().getDepartureDate().toString());
+        res.setBooking(br);
+        
+        // Set user details
         UserResponse ur = new UserResponse();
         ur.setId(payment.getUser().getId());
         ur.setUserId(payment.getUser().getUserId());
@@ -103,6 +136,7 @@ public class PaymentResponse {
         ur.setLastName(payment.getUser().getLastName());
         ur.setEmail(payment.getUser().getEmail());
         res.setUser(ur);
+        
         res.setAmount(payment.getAmount());
         res.setCurrency(payment.getCurrency());
         res.setMethod(payment.getMethod());

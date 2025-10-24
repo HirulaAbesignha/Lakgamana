@@ -19,6 +19,11 @@ export default function MyTicketsPage() {
   const [isRefundModalOpen, setIsRefundModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [editFormData, setEditFormData] = useState({});
+  const [rescheduleFormData, setRescheduleFormData] = useState({
+    newDate: '',
+    newTime: ''
+  });
 
   useEffect(() => {
     fetchMyTickets();
@@ -75,13 +80,30 @@ export default function MyTicketsPage() {
     setIsCancelModalOpen(true);
   };
 
-  const handleRescheduleTicket = (ticket) => {
+  const handleRescheduleTicket = async (ticket) => {
     setSelectedTicket(ticket);
+    setRescheduleFormData({
+      newDate: ticket.departureDate || '',
+      newTime: ticket.departureTime || ''
+    });
+    
     setIsRescheduleModalOpen(true);
   };
 
   const handleEditTicket = (ticket) => {
     setSelectedTicket(ticket);
+    // Initialize form data with current passenger information
+    const formData = {};
+    ticket.passengers?.forEach((passenger, index) => {
+      formData[`passenger_${index}`] = {
+        name: passenger.name || '',
+        age: passenger.age || '',
+        gender: passenger.gender || 'MALE',
+        idNumber: passenger.idNumber || '',
+        idType: passenger.idType || 'NIC'
+      };
+    });
+    setEditFormData(formData);
     setIsEditModalOpen(true);
   };
 
@@ -93,6 +115,97 @@ export default function MyTicketsPage() {
   const handleRefund = (ticket) => {
     setSelectedTicket(ticket);
     setIsRefundModalOpen(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!selectedTicket) return;
+
+    try {
+      const authData = JSON.parse(localStorage.getItem('lak_auth') || '{}');
+      
+      // Convert form data to passenger requests
+      const passengerRequests = Object.values(editFormData).map(passenger => ({
+        name: passenger.name,
+        age: parseInt(passenger.age),
+        gender: passenger.gender,
+        idNumber: passenger.idNumber,
+        idType: passenger.idType
+      }));
+
+      const response = await fetch(`/backend/bookings/${selectedTicket.bookingId}/edit`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authData.token}`
+        },
+        body: JSON.stringify(passengerRequests)
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        let errorMessage = '';
+        try {
+          const errorData = JSON.parse(errorText);
+          errorMessage = errorData.message || JSON.stringify(errorData);
+        } catch {
+          errorMessage = errorText || `HTTP ${response.status}: ${response.statusText}`;
+        }
+        setError(errorMessage || 'Failed to update booking');
+        return;
+      }
+
+      // Refresh tickets list
+      await fetchMyTickets();
+      setIsEditModalOpen(false);
+      setSelectedTicket(null);
+      setEditFormData({});
+      alert('Booking updated successfully!');
+    } catch (error) {
+      console.error('Error updating booking:', error);
+      setError(error.message);
+    }
+  };
+
+  const handleSaveReschedule = async () => {
+    if (!selectedTicket || !rescheduleFormData.newDate || !rescheduleFormData.newTime) {
+      alert('Please select both a new date and time');
+      return;
+    }
+
+    try {
+      const authData = JSON.parse(localStorage.getItem('lak_auth') || '{}');
+      
+      const response = await fetch(`/backend/bookings/${selectedTicket.bookingId}/reschedule?newDepartureDate=${rescheduleFormData.newDate}&newDepartureTime=${rescheduleFormData.newTime}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authData.token}`
+        }
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        let errorMessage = '';
+        try {
+          const errorData = JSON.parse(errorText);
+          errorMessage = errorData.message || JSON.stringify(errorData);
+        } catch {
+          errorMessage = errorText || `HTTP ${response.status}: ${response.statusText}`;
+        }
+        setError(errorMessage || 'Failed to reschedule booking');
+        return;
+      }
+
+      // Refresh tickets list
+      await fetchMyTickets();
+      setIsRescheduleModalOpen(false);
+      setSelectedTicket(null);
+      setRescheduleFormData({ newDate: '', newTime: '' });
+      alert('Booking rescheduled successfully!');
+    } catch (error) {
+      console.error('Error rescheduling booking:', error);
+      setError(error.message);
+    }
   };
 
   const handleSubmitFeedback = async (feedbackData) => {
@@ -687,6 +800,8 @@ export default function MyTicketsPage() {
                   </label>
                   <input
                     type="date"
+                    value={rescheduleFormData.newDate}
+                    onChange={(e) => setRescheduleFormData(prev => ({ ...prev, newDate: e.target.value }))}
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     min={new Date().toISOString().split('T')[0]}
                   />
@@ -696,13 +811,12 @@ export default function MyTicketsPage() {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     New Time
                   </label>
-                  <select className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                    <option value="">Select Time</option>
-                    <option value="08:00">08:00 AM</option>
-                    <option value="10:30">10:30 AM</option>
-                    <option value="14:00">02:00 PM</option>
-                    <option value="16:30">04:30 PM</option>
-                  </select>
+                  <input
+                    type="time"
+                    value={rescheduleFormData.newTime}
+                    onChange={(e) => setRescheduleFormData(prev => ({ ...prev, newTime: e.target.value }))}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
                 </div>
               </div>
               
@@ -726,7 +840,7 @@ export default function MyTicketsPage() {
           <Button variant="outline" onClick={() => setIsRescheduleModalOpen(false)}>
             Cancel
           </Button>
-          <Button variant="primary" onClick={() => setIsRescheduleModalOpen(false)}>
+          <Button variant="primary" onClick={handleSaveReschedule}>
             Confirm Reschedule
           </Button>
         </ModalFooter>
@@ -759,56 +873,94 @@ export default function MyTicketsPage() {
               <div>
                 <h3 className="font-semibold text-gray-900 mb-4">Passenger Information</h3>
                 <div className="space-y-4">
-                  {selectedTicket.passengers?.map((passenger, index) => (
-                    <div key={index} className="border rounded-lg p-4">
-                      <h4 className="font-medium mb-3">Passenger {index + 1}</h4>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Full Name
-                          </label>
-                          <input
-                            type="text"
-                            defaultValue={passenger.name}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Age
-                          </label>
-                          <input
-                            type="number"
-                            defaultValue={passenger.age}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Gender
-                          </label>
-                          <select
-                            defaultValue={passenger.gender}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          >
-                            <option value="MALE">Male</option>
-                            <option value="FEMALE">Female</option>
-                            <option value="OTHER">Other</option>
-                          </select>
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            ID Number
-                          </label>
-                          <input
-                            type="text"
-                            defaultValue={passenger.idNumber}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          />
+                  {selectedTicket.passengers?.map((passenger, index) => {
+                    const passengerKey = `passenger_${index}`;
+                    const passengerData = editFormData[passengerKey] || {};
+                    
+                    return (
+                      <div key={index} className="border rounded-lg p-4">
+                        <h4 className="font-medium mb-3">Passenger {index + 1}</h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Full Name
+                            </label>
+                            <input
+                              type="text"
+                              value={passengerData.name || ''}
+                              onChange={(e) => setEditFormData(prev => ({
+                                ...prev,
+                                [passengerKey]: { ...prev[passengerKey], name: e.target.value }
+                              }))}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Age
+                            </label>
+                            <input
+                              type="number"
+                              value={passengerData.age || ''}
+                              onChange={(e) => setEditFormData(prev => ({
+                                ...prev,
+                                [passengerKey]: { ...prev[passengerKey], age: e.target.value }
+                              }))}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Gender
+                            </label>
+                            <select
+                              value={passengerData.gender || 'MALE'}
+                              onChange={(e) => setEditFormData(prev => ({
+                                ...prev,
+                                [passengerKey]: { ...prev[passengerKey], gender: e.target.value }
+                              }))}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            >
+                              <option value="MALE">Male</option>
+                              <option value="FEMALE">Female</option>
+                              <option value="OTHER">Other</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              ID Number
+                            </label>
+                            <input
+                              type="text"
+                              value={passengerData.idNumber || ''}
+                              onChange={(e) => setEditFormData(prev => ({
+                                ...prev,
+                                [passengerKey]: { ...prev[passengerKey], idNumber: e.target.value }
+                              }))}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              ID Type
+                            </label>
+                            <select
+                              value={passengerData.idType || 'NIC'}
+                              onChange={(e) => setEditFormData(prev => ({
+                                ...prev,
+                                [passengerKey]: { ...prev[passengerKey], idType: e.target.value }
+                              }))}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            >
+                              <option value="NIC">NIC</option>
+                              <option value="PASSPORT">Passport</option>
+                              <option value="DRIVING_LICENSE">Driving License</option>
+                            </select>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             </div>
@@ -818,11 +970,7 @@ export default function MyTicketsPage() {
           <Button variant="outline" onClick={() => setIsEditModalOpen(false)}>
             Cancel
           </Button>
-          <Button onClick={() => {
-            // Here you would implement the save functionality
-            alert('Edit functionality would be implemented here');
-            setIsEditModalOpen(false);
-          }}>
+          <Button onClick={handleSaveEdit}>
             Save Changes
           </Button>
         </ModalFooter>

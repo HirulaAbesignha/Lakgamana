@@ -235,4 +235,41 @@ public class BookingController {
             return ResponseEntity.badRequest().build();
         }
     }
+
+    @PutMapping("/{bookingId}/edit")
+    @Operation(summary = "Edit booking passengers", description = "Update passenger details for a booking")
+    @PreAuthorize("hasRole('USER') or hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<BookingResponse>> editBooking(
+            @PathVariable String bookingId,
+            @Valid @RequestBody List<com.lakgamana.dto.request.PassengerRequest> passengerRequests) {
+        try {
+            log.info("Editing booking with ID: {}", bookingId);
+            Booking booking = bookingService.updateBookingPassengers(bookingId, passengerRequests);
+            BookingResponse bookingResponse = BookingResponse.fromEntity(booking);
+            return ResponseEntity.ok(ApiResponse.success("Booking updated successfully", bookingResponse));
+        } catch (Exception e) {
+            log.error("Failed to edit booking with id: {}", bookingId, e);
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error("Failed to edit booking: " + e.getMessage()));
+        }
+    }
+
+    @PutMapping("/{bookingId}/reschedule")
+    @Operation(summary = "Reschedule booking", description = "Reschedule a booking to a different date and/or time")
+    @PreAuthorize("hasRole('USER') or hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<BookingResponse>> rescheduleBooking(
+            @PathVariable String bookingId,
+            @RequestParam String newDepartureDate,
+            @RequestParam String newDepartureTime) {
+        try {
+            log.info("Rescheduling booking with ID: {} to date: {} at time: {}", bookingId, newDepartureDate, newDepartureTime);
+            Booking booking = bookingService.rescheduleBooking(bookingId, newDepartureDate, newDepartureTime);
+            BookingResponse bookingResponse = BookingResponse.fromEntity(booking);
+            return ResponseEntity.ok(ApiResponse.success("Booking rescheduled successfully", bookingResponse));
+        } catch (Exception e) {
+            log.error("Failed to reschedule booking with id: {}", bookingId, e);
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error("Failed to reschedule booking: " + e.getMessage()));
+        }
+    }
 }

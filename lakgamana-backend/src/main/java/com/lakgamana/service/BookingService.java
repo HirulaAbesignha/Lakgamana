@@ -281,4 +281,96 @@ public class BookingService {
         int seatNumber = (int) (Math.random() * 100) + 1;
         return prefix + seatNumber;
     }
+
+    /**
+     * Update passenger details for a booking
+     */
+    @Transactional
+    public Booking updateBookingPassengers(String bookingId, List<PassengerRequest> passengerRequests) {
+        try {
+            log.info("Updating passengers for booking ID: {}", bookingId);
+            
+            Booking booking = findByBookingId(bookingId);
+            
+            // Check if booking can be updated
+            if (booking.getStatus() != BookingStatus.PENDING) {
+                throw new RuntimeException("Only pending bookings can be updated");
+            }
+            
+            // Clear existing passengers
+            booking.getPassengers().clear();
+            
+            // Add updated passengers
+            for (PassengerRequest passengerRequest : passengerRequests) {
+                Passenger passenger = new Passenger();
+                passenger.setName(passengerRequest.getName());
+                passenger.setAge(passengerRequest.getAge());
+                passenger.setGender(passengerRequest.getGender());
+                passenger.setIdNumber(passengerRequest.getIdNumber());
+                
+                // Set ID type if provided, otherwise set a default value
+                if (passengerRequest.getIdType() != null) {
+                    passenger.setIdType(passengerRequest.getIdType());
+                } else {
+                    // Set default ID type for adults (age >= 18), null for children
+                    if (passengerRequest.getAge() >= 18) {
+                        passenger.setIdType(com.lakgamana.entity.enums.IdType.NIC);
+                    }
+                }
+                
+                passenger.setBooking(booking);
+                booking.getPassengers().add(passenger);
+            }
+            
+            booking.setUpdatedAt(LocalDateTime.now());
+            
+            return bookingRepository.save(booking);
+            
+        } catch (Exception e) {
+            log.error("Error updating passengers for booking ID: {}", bookingId, e);
+            throw new RuntimeException("Failed to update booking passengers: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Reschedule a booking to a different date and/or time
+     */
+    @Transactional
+    public Booking rescheduleBooking(String bookingId, String newDepartureDate, String newDepartureTime) {
+        try {
+            log.info("Rescheduling booking ID: {} to date: {} at time: {}", bookingId, newDepartureDate, newDepartureTime);
+            
+            Booking booking = findByBookingId(bookingId);
+            
+            // Check if booking can be rescheduled
+            if (booking.getStatus() != BookingStatus.PENDING) {
+                throw new RuntimeException("Only pending bookings can be rescheduled");
+            }
+            
+            // Parse the new date and time
+            java.time.LocalDate newDate = java.time.LocalDate.parse(newDepartureDate);
+            java.time.LocalTime newTime = java.time.LocalTime.parse(newDepartureTime);
+            
+            // Update booking details
+            booking.setDepartureDate(newDate);
+            booking.setDepartureTime(newTime);
+            
+            // Calculate new arrival time based on the train's duration
+            Train train = booking.getTrain();
+            if (train != null && train.getArrivalTime() != null) {
+                // Calculate the duration between departure and arrival times
+                java.time.Duration duration = java.time.Duration.between(train.getDepartureTime(), train.getArrivalTime());
+                java.time.LocalTime newArrivalTime = newTime.plus(duration);
+                booking.setArrivalTime(newArrivalTime);
+            }
+            
+            booking.setUpdatedAt(LocalDateTime.now());
+            
+            return bookingRepository.save(booking);
+            
+        } catch (Exception e) {
+            log.error("Error rescheduling booking ID: {}", bookingId, e);
+            throw new RuntimeException("Failed to reschedule booking: " + e.getMessage());
+        }
+    }
 }
