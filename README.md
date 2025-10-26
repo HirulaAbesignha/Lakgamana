@@ -14,7 +14,7 @@ A comprehensive full-stack train reservation system built with modern web techno
 </div>
 
 <p align="center">
-  <img src="images/IMG_3165.png" alt="Preview" width="100%" style="border-radius: 15px;" />
+  <img src="images/Screenshot 2025-10-26 135436.png" alt="Preview" width="100%" style="border-radius: 15px;" />
 </p>
 
 ## Features
