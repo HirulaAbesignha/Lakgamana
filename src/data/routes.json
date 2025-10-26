@@ -1,0 +1,124 @@
+[
+  {
+    "id": "R001",
+    "name": "Colombo-Kandy Route",
+    "from": "Colombo Fort",
+    "to": "Kandy",
+    "distance": "120 km",
+    "duration": "2h 30m",
+    "stations": [
+      {"name": "Colombo Fort", "time": "08:00", "type": "departure"},
+      {"name": "Polgahawela", "time": "08:45", "type": "stop"},
+      {"name": "Peradeniya", "time": "10:15", "type": "stop"},
+      {"name": "Kandy", "time": "10:30", "type": "arrival"}
+    ],
+    "schedule": {
+      "monday": true,
+      "tuesday": true,
+      "wednesday": true,
+      "thursday": true,
+      "friday": true,
+      "saturday": true,
+      "sunday": true
+    },
+    "status": "active"
+  },
+  {
+    "id": "R002",
+    "name": "Colombo-Galle Route",
+    "from": "Colombo Fort",
+    "to": "Galle",
+    "distance": "110 km",
+    "duration": "2h 15m",
+    "stations": [
+      {"name": "Colombo Fort", "time": "09:30", "type": "departure"},
+      {"name": "Kalutara", "time": "10:15", "type": "stop"},
+      {"name": "Hikkaduwa", "time": "11:20", "type": "stop"},
+      {"name": "Galle", "time": "11:45", "type": "arrival"}
+    ],
+    "schedule": {
+      "monday": true,
+      "tuesday": true,
+      "wednesday": true,
+      "thursday": true,
+      "friday": true,
+      "saturday": true,
+      "sunday": true
+    },
+    "status": "active"
+  },
+  {
+    "id": "R003",
+    "name": "Kandy-Nuwara Eliya Route",
+    "from": "Kandy",
+    "to": "Nuwara Eliya",
+    "distance": "80 km",
+    "duration": "3h 00m",
+    "stations": [
+      {"name": "Kandy", "time": "07:00", "type": "departure"},
+      {"name": "Peradeniya", "time": "07:15", "type": "stop"},
+      {"name": "Hatton", "time": "08:30", "type": "stop"},
+      {"name": "Nanu Oya", "time": "09:45", "type": "stop"},
+      {"name": "Nuwara Eliya", "time": "10:00", "type": "arrival"}
+    ],
+    "schedule": {
+      "monday": true,
+      "tuesday": true,
+      "wednesday": true,
+      "thursday": true,
+      "friday": true,
+      "saturday": true,
+      "sunday": true
+    },
+    "status": "active"
+  },
+  {
+    "id": "R004",
+    "name": "Colombo-Trincomalee Route",
+    "from": "Colombo Fort",
+    "to": "Trincomalee",
+    "distance": "260 km",
+    "duration": "5h 30m",
+    "stations": [
+      {"name": "Colombo Fort", "time": "06:30", "type": "departure"},
+      {"name": "Kurunegala", "time": "08:00", "type": "stop"},
+      {"name": "Anuradhapura", "time": "10:15", "type": "stop"},
+      {"name": "Trincomalee", "time": "12:00", "type": "arrival"}
+    ],
+    "schedule": {
+      "monday": true,
+      "tuesday": true,
+      "wednesday": true,
+      "thursday": true,
+      "friday": true,
+      "saturday": true,
+      "sunday": true
+    },
+    "status": "active"
+  },
+  {
+    "id": "R005",
+    "name": "Colombo-Jaffna Route",
+    "from": "Colombo Fort",
+    "to": "Jaffna",
+    "distance": "400 km",
+    "duration": "6h 45m",
+    "stations": [
+      {"name": "Colombo Fort", "time": "08:45", "type": "departure"},
+      {"name": "Kurunegala", "time": "10:30", "type": "stop"},
+      {"name": "Anuradhapura", "time": "12:45", "type": "stop"},
+      {"name": "Vavuniya", "time": "14:00", "type": "stop"},
+      {"name": "Jaffna", "time": "15:30", "type": "arrival"}
+    ],
+    "schedule": {
+      "monday": true,
+      "tuesday": true,
+      "wednesday": true,
+      "thursday": true,
+      "friday": true,
+      "saturday": true,
+      "sunday": true
+    },
+    "status": "active"
+  }
+]

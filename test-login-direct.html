@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Direct Login Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 50px; }
+        .container { max-width: 500px; margin: 0 auto; }
+        .form-group { margin-bottom: 20px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; }
+        button { background: #007bff; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        .result { margin-top: 20px; padding: 15px; border-radius: 4px; }
+        .success { background: #d4edda; border: 1px solid #c3e6cb; color: #155724; }
+        .error { background: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 4px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Direct Login Test</h1>
+        <p>This page tests the login directly without any framework interference.</p>
+        
+        <form id="loginForm">
+            <div class="form-group">
+                <label for="email">Email:</label>
+                <input type="email" id="email" value="admin@lakgamana.com" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="password">Password:</label>
+                <input type="password" id="password" value="Admin123!" required>
+            </div>
+            
+            <button type="submit">Test Login</button>
+        </form>
+        
+        <div id="result"></div>
+        
+        <div style="margin-top: 30px; padding: 15px; background: #e9ecef; border-radius: 4px;">
+            <h3>Instructions:</h3>
+            <ol>
+                <li>Make sure your backend server is running on port 8081</li>
+                <li>Click "Test Login" button</li>
+                <li>Check the result below</li>
+                <li>Open browser developer tools (F12) and check the Console tab for detailed logs</li>
+            </ol>
+        </div>
+    </div>
+    
+    <script>
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const resultDiv = document.getElementById('result');
+            
+            resultDiv.innerHTML = '<div class="result">Testing login...</div>';
+            
+            try {
+                console.log('=== LOGIN TEST START ===');
+                console.log('Email:', email);
+                console.log('Password:', password);
+                console.log('Endpoint: http://localhost:8081/auth/login');
+                
+                const requestBody = {
+                    email: email,
+                    password: password
+                };
+                
+                console.log('Request body:', requestBody);
+                
+                const response = await fetch('http://localhost:8081/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(requestBody),
+                });
+                
+                console.log('Response status:', response.status);
+                console.log('Response ok:', response.ok);
+                console.log('Response headers:', [...response.headers.entries()]);
+                
+                const result = await response.json();
+                console.log('Response data:', result);
+                
+                if (response.ok) {
+                    resultDiv.innerHTML = `
+                        <div class="result success">
+                            <h3>✅ Login Successful!</h3>
+                            <p><strong>Message:</strong> ${result.message}</p>
+                            <p><strong>User Role:</strong> ${result.data.user.role}</p>
+                            <p><strong>User Email:</strong> ${result.data.user.email}</p>
+                            <p><strong>Token:</strong> ${result.data.token.substring(0, 50)}...</p>
+                            <details>
+                                <summary>Full Response</summary>
+                                <pre>${JSON.stringify(result, null, 2)}</pre>
+                            </details>
+                        </div>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="result error">
+                            <h3>❌ Login Failed</h3>
+                            <p><strong>Status:</strong> ${response.status}</p>
+                            <p><strong>Message:</strong> ${result.message}</p>
+                            <details>
+                                <summary>Full Response</summary>
+                                <pre>${JSON.stringify(result, null, 2)}</pre>
+                            </details>
+                        </div>
+                    `;
+                }
+                
+                console.log('=== LOGIN TEST END ===');
+                
+            } catch (error) {
+                console.error('=== LOGIN ERROR ===');
+                console.error('Error:', error);
+                console.error('Error message:', error.message);
+                console.error('Error stack:', error.stack);
+                
+                resultDiv.innerHTML = `
+                    <div class="result error">
+                        <h3>❌ Network/JavaScript Error</h3>
+                        <p><strong>Error:</strong> ${error.message}</p>
+                        <p>Check the browser console for more details.</p>
+                        <details>
+                            <summary>Error Details</summary>
+                            <pre>${error.stack}</pre>
+                        </details>
+                    </div>
+                `;
+            }
+        });
+        
+        // Test backend connectivity on page load
+        window.addEventListener('load', async () => {
+            try {
+                console.log('Testing backend connectivity...');
+                const response = await fetch('http://localhost:8081/setup/check-admin');
+                const result = await response.json();
+                console.log('Backend connectivity test:', result);
+            } catch (error) {
+                console.error('Backend connectivity test failed:', error);
+            }
+        });
+    </script>
+</body>
+</html>

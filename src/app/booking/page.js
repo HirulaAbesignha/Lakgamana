@@ -1,0 +1,575 @@
+'use client';
+
+import { useState, useEffect, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
+import Button from '../../components/ui/button';
+import { Input, Select } from '../../components/ui/input';
+import { StatusBadge } from '../../components/ui/badge';
+import { formatCurrency, formatTime, calculateDuration } from '../../lib/utils';
+
+function BookingForm() {
+  const searchParams = useSearchParams();
+  const [selectedTrain, setSelectedTrain] = useState(null);
+  const [bookingStep, setBookingStep] = useState(1);
+  const [searchForm, setSearchForm] = useState({
+    from: searchParams.get('from') || '',
+    to: searchParams.get('to') || '',
+    date: searchParams.get('date') || '',
+    adults: parseInt(searchParams.get('adults')) || 1,
+    children: parseInt(searchParams.get('children')) || 0
+  });
+  const [passengerDetails, setPassengerDetails] = useState([]);
+  const [seatClass, setSeatClass] = useState('economy');
+  const [availableTrains, setAvailableTrains] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [searchError, setSearchError] = useState(null);
+
+  const stations = [
+    { value: '', label: 'Select Station' },
+    { value: 'Colombo Fort', label: 'Colombo Fort' },
+    { value: 'Kandy', label: 'Kandy' },
+    { value: 'Galle', label: 'Galle' },
+    { value: 'Nuwara Eliya', label: 'Nuwara Eliya' },
+    { value: 'Trincomalee', label: 'Trincomalee' },
+    { value: 'Jaffna', label: 'Jaffna' }
+  ];
+
+  const seatClasses = [
+    { value: 'economy', label: 'Economy Class', price: 'from 150 LKR' },
+    { value: 'business', label: 'Business Class', price: 'from 250 LKR' },
+    { value: 'first', label: 'First Class', price: 'from 400 LKR' }
+  ];
+
+  const getPrice = (train, seat) => {
+    const pricing = train?.pricing || {};
+    const map = {
+      economy: pricing.economyPrice ?? pricing.economy ?? train?.economy ?? train?.economyPrice ?? 0,
+      business: pricing.businessPrice ?? pricing.business ?? train?.business ?? train?.businessPrice ?? 0,
+      first: pricing.firstPrice ?? pricing.first ?? train?.first ?? train?.firstClassPrice ?? 0,
+    };
+    const n = Number(map[seat]);
+    return Number.isFinite(n) ? n : 0;
+  };
+
+  const searchTrains = async () => {
+    if (!searchForm.from || !searchForm.to || !searchForm.date) {
+      setSearchError('Please fill in all search fields');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setSearchError(null);
+
+      const params = new URLSearchParams({
+        from: searchForm.from,
+        to: searchForm.to,
+        date: searchForm.date,
+        seatClass: seatClass
+      });
+      const response = await fetch(`http://localhost:8081/trains/search?${params.toString()}`);
+
+      if (!response.ok) {
+        let backendMessage = '';
+        try {
+          const responseText = await response.text();
+          try {
+            const errJson = JSON.parse(responseText);
+            backendMessage = errJson?.message || JSON.stringify(errJson);
+          } catch {
+            backendMessage = responseText;
+          }
+        } catch (_) {
+          backendMessage = `HTTP ${response.status}: ${response.statusText}`;
+        }
+        throw new Error(backendMessage || 'Failed to search trains');
+      }
+
+      const result = await response.json();
+      const trains = (result?.data && (result.data.content ?? result.data)) || [];
+      setAvailableTrains(trains);
+      // Always move to step 2; UI handles empty state gracefully
+      setBookingStep(2);
+    } catch (error) {
+      console.error('Error searching trains:', error);
+      setSearchError(error.message);
+      // Fallback to mock data for development
+      setAvailableTrains([
+        {
+          id: 1,
+          name: 'Express Train',
+          route: 'Colombo - Kandy',
+          fromStation: 'Colombo Fort',
+          toStation: 'Kandy',
+          departureTime: '08:00',
+          arrivalTime: '10:30',
+          duration: '2h 30m',
+          pricing: { economy: 150, business: 200, first: 300 },
+          features: ['AC', 'WiFi', 'Food Service'],
+          seatInfo: { availableEconomy: 50, availableBusiness: 20, availableFirst: 10 }
+        }
+      ]);
+      
+      // Move to step 2 even with fallback data
+      setBookingStep(2);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Initialize passenger details
+  useEffect(() => {
+    const adultsCount = parseInt(searchForm.adults) || 0;
+    const childrenCount = parseInt(searchForm.children) || 0;
+    const totalPassengers = adultsCount + childrenCount;
+    
+    const details = Array.from({ length: totalPassengers }, (_, index) => {
+      // First passengers are adults, then children
+      const isAdult = index < adultsCount;
+      return {
+        name: '',
+        age: '',
+        gender: '',
+        passengerType: isAdult ? 'adult' : 'child', // Add passenger type
+        idType: '',
+        idNumber: ''
+      };
+    });
+    setPassengerDetails(details);
+  }, [searchForm.adults, searchForm.children]);
+
+  const handleInputChange = (field, value) => {
+    setSearchForm(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  const handlePassengerChange = (index, field, value) => {
+    const updated = [...passengerDetails];
+    updated[index][field] = value;
+    setPassengerDetails(updated);
+  };
+
+
+  const selectTrain = (train) => {
+    setSelectedTrain(train);
+    setBookingStep(3);
+  };
+
+  const proceedToPayment = () => {
+    // Check if all required fields are filled
+    const isValid = passengerDetails.every(p => {
+      const basicFields = p.name && p.age && p.gender;
+      const isChild = p.passengerType === 'child';
+      
+      // For children, only basic fields are required
+      if (isChild) {
+        return basicFields;
+      }
+      
+      // For adults, ID fields are also required
+      return basicFields && p.idType && p.idNumber;
+    });
+    
+    if (isValid) {
+      // Redirect to payment page with booking details
+      const bookingData = {
+        train: selectedTrain,
+        passengers: passengerDetails,
+        seatClass,
+        adultsCount: parseInt(searchForm.adults) || 0,
+        childrenCount: parseInt(searchForm.children) || 0,
+        totalAmount: (() => {
+          const adultUnit = getPrice(selectedTrain, seatClass);
+          const childUnit = Math.round(adultUnit / 2);
+          const numAdults = parseInt(searchForm.adults) || 0;
+          const numChildren = parseInt(searchForm.children) || 0;
+          return adultUnit * numAdults + childUnit * numChildren;
+        })(),
+        // Persist the selected date for later display/formatting
+        departureDate: searchForm.date
+      };
+      
+      // Store booking data in localStorage for payment page
+      localStorage.setItem('bookingData', JSON.stringify(bookingData));
+      window.location.href = '/payment';
+    }
+  };
+
+  const today = new Date().toISOString().split('T')[0];
+
+  return (
+    <div className="min-h-screen py-8 pt-24" style={{ background: 'var(--gradient-warm)' }}>
+      <div className="container-custom">
+        <div className="max-w-6xl mx-auto">
+          {/* Progress Steps */}
+          <div className="mb-8">
+            <div className="flex items-center justify-center space-x-8">
+              {[1, 2, 3, 4].map((step) => (
+                <div key={step} className="flex items-center">
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+                    bookingStep >= step 
+                      ? 'bg-blue-600 text-white' 
+                      : 'bg-gray-200 text-gray-600'
+                  }`}>
+                    {step}
+                  </div>
+                  {step < 4 && (
+                    <div className={`w-16 h-1 ml-2 ${
+                      bookingStep > step ? 'bg-blue-600' : 'bg-gray-200'
+                    }`} />
+                  )}
+                </div>
+              ))}
+            </div>
+            <div className="flex justify-center mt-4 space-x-16 text-sm text-gray-600">
+              <span>Search</span>
+              <span>Select Train</span>
+              <span>Passenger Details</span>
+              <span>Payment</span>
+            </div>
+          </div>
+
+          {bookingStep === 1 && (
+            <Card className="max-w-4xl mx-auto">
+              <CardHeader>
+                <CardTitle className="text-2xl text-center">Search for Trains</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                  <Select
+                    label="From Station"
+                    value={searchForm.from}
+                    onChange={(e) => handleInputChange('from', e.target.value)}
+                    options={stations}
+                    required
+                  />
+                  <Select
+                    label="To Station"
+                    value={searchForm.to}
+                    onChange={(e) => handleInputChange('to', e.target.value)}
+                    options={stations}
+                    required
+                  />
+                  <Input
+                    label="Departure Date"
+                    type="date"
+                    value={searchForm.date}
+                    onChange={(e) => handleInputChange('date', e.target.value)}
+                    min={today}
+                    required
+                  />
+                  <Select
+                    label="Adults"
+                    value={searchForm.adults}
+                    onChange={(e) => handleInputChange('adults', parseInt(e.target.value))}
+                    options={[
+                      { value: 1, label: '1 Adult' },
+                      { value: 2, label: '2 Adults' },
+                      { value: 3, label: '3 Adults' },
+                      { value: 4, label: '4 Adults' },
+                      { value: 5, label: '5 Adults' }
+                    ]}
+                    required
+                  />
+                  <Select
+                    label="Children"
+                    value={searchForm.children}
+                    onChange={(e) => handleInputChange('children', parseInt(e.target.value))}
+                    options={[
+                      { value: 0, label: '0 Children' },
+                      { value: 1, label: '1 Child' },
+                      { value: 2, label: '2 Children' },
+                      { value: 3, label: '3 Children' },
+                      { value: 4, label: '4 Children' },
+                      { value: 5, label: '5 Children' }
+                    ]}
+                    required
+                  />
+                </div>
+                <div className="text-center">
+                  <Button onClick={searchTrains} size="lg" disabled={loading}>
+                    {loading ? 'Searching...' : 'Search Trains'}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {bookingStep === 2 && (
+            <div>
+              <div className="mb-6">
+                <Button variant="outline" onClick={() => setBookingStep(1)}>
+                  ← Back to Search
+                </Button>
+              </div>
+              
+              <h2 className="text-2xl font-bold mb-6">Available Trains</h2>
+              
+              {searchError && (
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+                  <p className="text-yellow-800">
+                    {searchError}. Showing sample trains for demonstration.
+                  </p>
+                </div>
+              )}
+              
+              {loading ? (
+                <div className="text-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+                  <p className="text-gray-600 mt-2">Searching for trains...</p>
+                </div>
+              ) : availableTrains.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-gray-500">No trains found. Please try a different search.</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {availableTrains.map((train) => (
+                  <Card key={train.id} hover>
+                    <CardContent className="p-6">
+                      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center justify-between mb-3">
+                            <h3 className="text-xl font-semibold">{train.name}</h3>
+                            <StatusBadge status="active" />
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                            <div>
+                              <p className="text-sm text-gray-500">Route</p>
+                              <p className="font-medium">{train.route || `${train.fromStation} - ${train.toStation}`}</p>
+                            </div>
+                            <div>
+                              <p className="text-sm text-gray-500">Duration</p>
+                              <p className="font-medium">{train.duration}</p>
+                            </div>
+                            <div>
+                              <p className="text-sm text-gray-500">Distance</p>
+                              <p className="font-medium">{train.distance}</p>
+                            </div>
+                          </div>
+                          <div className="flex flex-wrap gap-2 mb-4">
+                            {train.features.map((feature, index) => (
+                              <span key={index} className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
+                                {feature}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                        <div className="lg:ml-6">
+                          <div className="text-center mb-4">
+                            <p className="text-sm text-gray-500">Departure</p>
+                            <p className="font-semibold">{formatTime(train.departureTime)}</p>
+                          </div>
+                          <div className="text-center mb-4">
+                            <p className="text-sm text-gray-500">Arrival</p>
+                            <p className="font-semibold">{formatTime(train.arrivalTime)}</p>
+                          </div>
+                          <div className="text-center mb-4">
+                            <p className="text-2xl font-bold text-green-600">
+                              {formatCurrency(getPrice(train, 'economy'))}
+                            </p>
+                            <p className="text-sm text-gray-500">from</p>
+                          </div>
+                          <Button onClick={() => selectTrain(train)} className="w-full">
+                            Select Train
+                          </Button>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {bookingStep === 3 && selectedTrain && (
+            <div>
+              <div className="mb-6">
+                <Button variant="outline" onClick={() => setBookingStep(2)}>
+                  ← Back to Trains
+                </Button>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                {/* Selected Train Info */}
+                <div className="lg:col-span-1">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Selected Train</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        <div>
+                          <h3 className="font-semibold">{selectedTrain.name}</h3>
+                          <p className="text-gray-600">{selectedTrain.route}</p>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4 text-sm">
+                          <div>
+                            <p className="text-gray-500">Departure</p>
+                            <p className="font-medium">{formatTime(selectedTrain.departureTime)}</p>
+                          </div>
+                          <div>
+                            <p className="text-gray-500">Arrival</p>
+                            <p className="font-medium">{formatTime(selectedTrain.arrivalTime)}</p>
+                          </div>
+                        </div>
+                        <div>
+                          <p className="text-gray-500">Seat Class</p>
+                          <Select
+                            value={seatClass}
+                            onChange={(e) => setSeatClass(e.target.value)}
+                            options={seatClasses}
+                          />
+                        </div>
+                        <div className="border-t pt-4">
+                          <div className="flex justify-between">
+                            <span>Total Amount:</span>
+                            <span className="font-bold text-lg">
+                              {(() => {
+                                const adultUnit = getPrice(selectedTrain, seatClass);
+                                const childUnit = Math.round(adultUnit / 2);
+                                const numAdults = parseInt(searchForm.adults) || 0;
+                                const numChildren = parseInt(searchForm.children) || 0;
+                                const total = adultUnit * numAdults + childUnit * numChildren;
+                                return formatCurrency(total);
+                              })()}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Passenger Details Form */}
+                <div className="lg:col-span-2">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Passenger Details</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-6">
+                        {passengerDetails.map((passenger, index) => {
+                          const isChild = passenger.passengerType === 'child';
+                          const isAdult = passenger.passengerType === 'adult';
+                          
+                          return (
+                            <div key={index} className="border rounded-lg p-4">
+                              <h4 className="font-medium mb-4">
+                                Passenger {index + 1} - {isAdult ? 'Adult' : 'Child'}
+                                {isChild && <span className="text-sm text-blue-600 ml-2">(No ID Required)</span>}
+                              </h4>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <Input
+                                  label="Full Name"
+                                  value={passenger.name}
+                                  onChange={(e) => handlePassengerChange(index, 'name', e.target.value)}
+                                  required
+                                />
+                                <Input
+                                  label="Age"
+                                  type="number"
+                                  value={passenger.age}
+                                  onChange={(e) => handlePassengerChange(index, 'age', e.target.value)}
+                                  min="1"
+                                  max="120"
+                                  required
+                                />
+                                <Select
+                                  label="Gender"
+                                  value={passenger.gender}
+                                  onChange={(e) => handlePassengerChange(index, 'gender', e.target.value)}
+                                  options={[
+                                    { value: '', label: 'Select Gender' },
+                                    { value: 'male', label: 'Male' },
+                                    { value: 'female', label: 'Female' },
+                                    { value: 'other', label: 'Other' }
+                                  ]}
+                                  required
+                                />
+                                
+                                {/* Only show ID fields for adults */}
+                                {isAdult && (
+                                  <>
+                                    <Select
+                                      label="ID Type"
+                                      value={passenger.idType}
+                                      onChange={(e) => handlePassengerChange(index, 'idType', e.target.value)}
+                                      options={[
+                                        { value: '', label: 'Select ID Type' },
+                                        { value: 'passport', label: 'Passport' },
+                                        { value: 'driving_license', label: 'Driving License' },
+                                        { value: 'national_id', label: 'National ID' }
+                                      ]}
+                                      required
+                                    />
+                                    <div className="md:col-span-2">
+                                      <Input
+                                        label="ID Number (10 digits)"
+                                        value={passenger.idNumber}
+                                        onChange={(e) => handlePassengerChange(index, 'idNumber', e.target.value)}
+                                        placeholder="Enter exactly 10 digits"
+                                        maxLength="10"
+                                        pattern="[0-9]{10}"
+                                        required
+                                      />
+                                    </div>
+                                  </>
+                                )}
+                                
+                                {/* Show info message for children */}
+                                {isChild && (
+                                  <div className="md:col-span-2">
+                                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                                      <div className="flex">
+                                        <svg className="w-5 h-5 text-blue-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                                        </svg>
+                                        <div>
+                                          <p className="text-sm text-blue-800">
+                                            <strong>Child Passenger:</strong> Children under 18 years old do not require ID documents for travel.
+                                          </p>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      
+                      <div className="mt-8 text-center">
+                        <Button onClick={proceedToPayment} size="lg">
+                          Proceed to Payment
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function BookingPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-gray-50 py-8 flex items-center justify-center">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+        <p className="text-gray-600">Loading booking form...</p>
+      </div>
+    </div>}>
+      <BookingForm />
+    </Suspense>
+  );
+}

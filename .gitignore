@@ -39,3 +39,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+lakgamana-backend/target/lakgamana-backend-1.0.0.jar
+admin.txt
+

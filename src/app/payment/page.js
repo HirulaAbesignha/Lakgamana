@@ -1,0 +1,564 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
+import Button from '../../components/ui/button';
+import { Input } from '../../components/ui/input';
+import { StatusBadge } from '../../components/ui/badge';
+import { formatCurrency, formatDate, formatTime } from '../../lib/utils';
+
+// Helper functions to map frontend values to backend enums
+const mapGenderToEnum = (gender) => {
+  switch (gender.toLowerCase()) {
+    case 'male': return 'MALE';
+    case 'female': return 'FEMALE';
+    case 'other': return 'OTHER';
+    default: return 'OTHER';
+  }
+};
+
+const mapIdTypeToEnum = (idType) => {
+  switch (idType.toLowerCase()) {
+    case 'national_id': return 'NIC';
+    case 'passport': return 'PASSPORT';
+    case 'driving_license': return 'DRIVING_LICENSE';
+    default: return 'NIC';
+  }
+};
+
+export default function PaymentPage() {
+  const router = useRouter();
+  const [bookingData, setBookingData] = useState(null);
+  const [paymentMethod, setPaymentMethod] = useState('credit_card');
+  const [paymentForm, setPaymentForm] = useState({
+    cardNumber: '',
+    expiryDate: '',
+    cvv: '',
+    cardHolderName: '',
+    upiId: '',
+    walletProvider: ''
+  });
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [paymentSuccess, setPaymentSuccess] = useState(false);
+
+  useEffect(() => {
+    const storedBookingData = localStorage.getItem('bookingData');
+    if (storedBookingData) {
+      setBookingData(JSON.parse(storedBookingData));
+    } else {
+      router.push('/booking');
+    }
+  }, [router]);
+
+  const handleInputChange = (field, value) => {
+    setPaymentForm(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  const formatCardNumber = (value) => {
+    const v = value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
+    const matches = v.match(/\d{4,16}/g);
+    const match = matches && matches[0] || '';
+    const parts = [];
+    for (let i = 0, len = match.length; i < len; i += 4) {
+      parts.push(match.substring(i, i + 4));
+    }
+    if (parts.length) {
+      return parts.join(' ');
+    } else {
+      return v;
+    }
+  };
+
+  const formatExpiryDate = (value) => {
+    const v = value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
+    if (v.length >= 2) {
+      return v.substring(0, 2) + '/' + v.substring(2, 4);
+    }
+    return v;
+  };
+
+  const handlePayment = async () => {
+    setIsProcessing(true);
+    
+    try {
+      const authData = JSON.parse(localStorage.getItem('lak_auth') || '{}');
+      
+      if (!authData.token) {
+        router.push('/login');
+        return;
+      }
+
+      // Create booking request
+      const totals = computeBookingTotals(bookingData);
+
+      const bookingRequest = {
+        trainId: parseInt(bookingData.train.id),
+        departureDate: bookingData.departureDate,
+        seatClass: bookingData.seatClass,
+        adultsCount: bookingData.adultsCount,
+        childrenCount: bookingData.childrenCount,
+        totalAmount: totals.grand,
+        passengers: bookingData.passengers.map(passenger => {
+          const isChild = passenger.passengerType === 'child';
+          
+          return {
+            name: passenger.name,
+            age: parseInt(passenger.age),
+            gender: mapGenderToEnum(passenger.gender),
+            // Only include ID fields for adults
+            ...(isChild ? {} : {
+              idType: mapIdTypeToEnum(passenger.idType),
+              idNumber: passenger.idNumber
+            })
+          };
+        })
+      };
+
+      console.log('Sending booking request:', bookingRequest);
+      console.log('Auth token:', authData.token ? 'Present' : 'Missing');
+      console.log('Original train data:', bookingData.train);
+      console.log('Passenger details:', bookingRequest.passengers);
+
+      // Create booking
+      const bookingResponse = await fetch('http://localhost:8081/bookings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authData.token}`
+        },
+        body: JSON.stringify(bookingRequest)
+      });
+
+      console.log('Booking response status:', bookingResponse.status);
+
+      if (!bookingResponse.ok) {
+        const errorData = await bookingResponse.json().catch(() => ({ message: 'Unknown error' }));
+        console.error('Booking creation failed:', errorData);
+        console.error('Response status:', bookingResponse.status);
+        console.error('Response headers:', Object.fromEntries(bookingResponse.headers.entries()));
+        
+        // Show error to user
+        throw new Error(errorData.message || `Failed to create booking: ${bookingResponse.status}`);
+      }
+
+      const bookingResult = await bookingResponse.json();
+      
+      // Create payment
+      const paymentRequest = {
+        bookingId: bookingResult.data.id,
+        method: mapPaymentMethodToEnum(paymentMethod),
+        amount: Number(bookingRequest.totalAmount),
+        currency: 'LKR',
+        // flat optional fields (backend validates by size only)
+        cardNumber: paymentForm.cardNumber,
+        expiryDate: paymentForm.expiryDate,
+        cvv: paymentForm.cvv,
+        cardHolderName: paymentForm.cardHolderName,
+        upiId: paymentForm.upiId,
+        walletProvider: paymentForm.walletProvider,
+        bankName: paymentForm.bankName,
+      };
+
+      console.log('Sending payment request:', paymentRequest);
+
+      const paymentResponse = await fetch('http://localhost:8081/payments/process', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authData.token}`
+        },
+        body: JSON.stringify(paymentRequest)
+      });
+
+      if (!paymentResponse.ok) {
+        let backendMessage = '';
+        try {
+          const responseText = await paymentResponse.text();
+          try {
+            const errJson = JSON.parse(responseText);
+            backendMessage = errJson?.message || JSON.stringify(errJson);
+          } catch {
+            backendMessage = responseText;
+          }
+        } catch (_) {
+          backendMessage = `HTTP ${paymentResponse.status}: ${paymentResponse.statusText}`;
+        }
+        console.error('Payment processing failed:', paymentResponse.status, backendMessage);
+        // Show error to user
+        throw new Error(backendMessage || 'Failed to process payment');
+      }
+
+      // Complete payment
+      const paymentResult = await paymentResponse.json();
+      console.log('Payment result:', paymentResult);
+      
+      await fetch(`http://localhost:8081/payments/${paymentResult.data.transactionId}/complete`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authData.token}`
+        }
+      });
+
+      // Don't automatically confirm booking - let admin do it manually
+      // This allows users to edit/delete/reschedule their bookings until admin confirms
+
+      setIsProcessing(false);
+      setPaymentSuccess(true);
+      
+      // Clear booking data after successful payment
+      localStorage.removeItem('bookingData');
+    } catch (error) {
+      console.error('Payment error:', error);
+      setIsProcessing(false);
+      
+      // Provide more helpful error messages
+      let errorMessage = 'Payment failed: ';
+      if (error.message.includes('Failed to create booking')) {
+        errorMessage += 'Unable to create booking. This might be because the train is not available or the backend server is not responding properly.';
+      } else if (error.message.includes('Failed to process payment')) {
+        errorMessage += 'Payment processing failed. Please check your payment details and try again.';
+      } else {
+        errorMessage += error.message;
+      }
+      
+      alert(errorMessage);
+    }
+  };
+
+  if (paymentSuccess) {
+    return (
+      <div className="min-h-screen bg-gray-50 py-8">
+        <div className="container-custom">
+          <div className="max-w-2xl mx-auto">
+            <Card className="text-center">
+              <CardContent className="p-12">
+                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+                <h2 className="text-2xl font-bold text-gray-900 mb-4">Payment Successful!</h2>
+                <p className="text-gray-600 mb-6">
+                  Your train booking has been confirmed. You will receive a confirmation email shortly.
+                </p>
+                <div className="space-y-3">
+                  <Button onClick={() => router.push('/tickets')} className="w-full">
+                    View My Tickets
+                  </Button>
+                  <Button variant="outline" onClick={() => router.push('/')} className="w-full">
+                    Back to Home
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!bookingData) {
+    return (
+      <div className="min-h-screen bg-gray-50 py-8">
+        <div className="container-custom">
+          <div className="max-w-2xl mx-auto">
+            <Card className="text-center">
+              <CardContent className="p-12">
+                <h2 className="text-2xl font-bold text-gray-900 mb-4">No Booking Data Found</h2>
+                <p className="text-gray-600 mb-6">
+                  Please complete your booking first.
+                </p>
+                <Button onClick={() => router.push('/booking')}>
+                  Go to Booking
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const paymentMethods = [
+    {
+      id: 'credit_card',
+      name: 'Credit Card',
+      icon: (
+        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+        </svg>
+      )
+    },
+    {
+      id: 'upi',
+      name: 'UPI',
+      icon: (
+        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+        </svg>
+      )
+    },
+    {
+      id: 'wallet',
+      name: 'Digital Wallet',
+      icon: (
+        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+        </svg>
+      )
+    }
+  ];
+
+  const getPrice = (train, seat) => {
+    const pricing = train?.pricing || {};
+    const map = {
+      economy: pricing.economy ?? pricing.economyPrice ?? train?.economy ?? train?.economyPrice ?? 0,
+      business: pricing.business ?? pricing.businessPrice ?? train?.business ?? train?.businessPrice ?? 0,
+      first: pricing.first ?? pricing.firstPrice ?? train?.first ?? train?.firstClassPrice ?? 0,
+    };
+    const n = Number(map[seat]);
+    return Number.isFinite(n) ? n : 0;
+  };
+
+  const computeBookingTotals = (data) => {
+    const unit = getPrice(data.train, data.seatClass);
+    const adults = Number(data.adultsCount || 0);
+    const children = Number(data.childrenCount || 0);
+    const childUnit = Math.round(unit / 2);
+    const items = unit * adults + childUnit * children;
+    const fee = 40;
+    const taxRate = 0.10; // 10% tax
+    const tax = Math.round((items + fee) * taxRate);
+    return { unit, childUnit, items, fee, tax, grand: items + fee + tax };
+  };
+
+  const mapPaymentMethodToEnum = (m) => {
+    if (!m) return 'CREDIT_CARD';
+    const v = String(m).toUpperCase().replace(/\s+/g,'_');
+    if (['CREDIT_CARD','DEBIT_CARD','UPI','NET_BANKING','WALLET'].includes(v)) return v;
+    return 'CREDIT_CARD';
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50 py-8">
+      <div className="container-custom">
+        <div className="max-w-4xl mx-auto">
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Complete Your Payment</h1>
+            <p className="text-gray-600">Secure payment processing for your train booking</p>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* Booking Summary */}
+            <div className="lg:col-span-1">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Booking Summary</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div>
+                      <h3 className="font-semibold">{bookingData.train.name}</h3>
+                      <p className="text-gray-600">{bookingData.train.route}</p>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <p className="text-gray-500">Date</p>
+                        <p className="font-medium">{formatDate(bookingData.departureDate)}</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-500">Time</p>
+                        <p className="font-medium">
+                          {formatTime(bookingData.train.departureTime)} - {formatTime(bookingData.train.arrivalTime)}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div>
+                      <p className="text-gray-500">Passengers</p>
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {bookingData.passengers.map((passenger, index) => (
+                          <span key={index} className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
+                            {passenger.name}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="border-t pt-4">
+                      <div className="space-y-2">
+                        <div className="flex justify-between text-sm">
+                          <span>Adults ({bookingData.adultsCount} × {formatCurrency(computeBookingTotals(bookingData).unit)})</span>
+                          <span>{formatCurrency(computeBookingTotals(bookingData).unit * (bookingData.adultsCount || 0))}</span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span>Children ({bookingData.childrenCount} × {formatCurrency(computeBookingTotals(bookingData).childUnit)})</span>
+                          <span>{formatCurrency(computeBookingTotals(bookingData).childUnit * (bookingData.childrenCount || 0))}</span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span>Service Fee</span>
+                          <span>{formatCurrency(computeBookingTotals(bookingData).fee)}</span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span>Tax (10%)</span>
+                          <span>{formatCurrency(computeBookingTotals(bookingData).tax)}</span>
+                        </div>
+                        <div className="border-t pt-2">
+                          <div className="flex justify-between font-semibold">
+                            <span>Total</span>
+                            <span className="text-lg">{formatCurrency(computeBookingTotals(bookingData).grand)}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Payment Form */}
+            <div className="lg:col-span-2">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Payment Details</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-6">
+                    {/* Payment Method Selection */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-3">
+                        Select Payment Method
+                      </label>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        {paymentMethods.map((method) => (
+                          <div
+                            key={method.id}
+                            className={`border-2 rounded-lg p-4 cursor-pointer transition-colors ${
+                              paymentMethod === method.id
+                                ? 'border-blue-500 bg-blue-50'
+                                : 'border-gray-200 hover:border-gray-300'
+                            }`}
+                            onClick={() => setPaymentMethod(method.id)}
+                          >
+                            <div className="flex items-center space-x-3">
+                              <div className={`p-2 rounded-lg ${
+                                paymentMethod === method.id ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-600'
+                              }`}>
+                                {method.icon}
+                              </div>
+                              <span className="font-medium">{method.name}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Payment Form Fields */}
+                    {paymentMethod === 'credit_card' && (
+                      <div className="space-y-4">
+                        <Input
+                          label="Card Number"
+                          placeholder="1234 5678 9012 3456"
+                          value={paymentForm.cardNumber}
+                          onChange={(e) => handleInputChange('cardNumber', formatCardNumber(e.target.value))}
+                          maxLength="19"
+                          required
+                        />
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <Input
+                            label="Expiry Date"
+                            placeholder="MM/YY"
+                            value={paymentForm.expiryDate}
+                            onChange={(e) => handleInputChange('expiryDate', formatExpiryDate(e.target.value))}
+                            maxLength="5"
+                            required
+                          />
+                          <Input
+                            label="CVV"
+                            placeholder="123"
+                            value={paymentForm.cvv}
+                            onChange={(e) => handleInputChange('cvv', e.target.value.replace(/\D/g, '').slice(0, 4))}
+                            maxLength="4"
+                            required
+                          />
+                        </div>
+                        <Input
+                          label="Card Holder Name"
+                          placeholder="John Doe"
+                          value={paymentForm.cardHolderName}
+                          onChange={(e) => handleInputChange('cardHolderName', e.target.value)}
+                          required
+                        />
+                      </div>
+                    )}
+
+                    {paymentMethod === 'upi' && (
+                      <div>
+                        <Input
+                          label="UPI ID"
+                          placeholder="yourname@paytm"
+                          value={paymentForm.upiId}
+                          onChange={(e) => handleInputChange('upiId', e.target.value)}
+                          required
+                        />
+                      </div>
+                    )}
+
+                    {paymentMethod === 'wallet' && (
+                      <div>
+                        <select
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          value={paymentForm.walletProvider}
+                          onChange={(e) => handleInputChange('walletProvider', e.target.value)}
+                          required
+                        >
+                          <option value="">Select Wallet Provider</option>
+                          <option value="paypal">PayPal</option>
+                          <option value="google_pay">Google Pay</option>
+                          <option value="apple_pay">Apple Pay</option>
+                          <option value="amazon_pay">Amazon Pay</option>
+                        </select>
+                      </div>
+                    )}
+
+                    {/* Security Notice */}
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                      <div className="flex">
+                        <svg className="w-5 h-5 text-green-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+                        </svg>
+                        <div>
+                          <p className="text-sm text-green-800">
+                            <strong>Secure Payment:</strong> Your payment information is encrypted and secure. 
+                            We use industry-standard SSL encryption to protect your data.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Payment Button */}
+                    <Button
+                      onClick={handlePayment}
+                      disabled={isProcessing}
+                      loading={isProcessing}
+                      className="w-full"
+                      size="lg"
+                    >
+                      {isProcessing ? 'Processing Payment...' : `Pay ${formatCurrency(computeBookingTotals(bookingData).grand)}`}
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
