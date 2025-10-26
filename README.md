@@ -1,12 +1,10 @@
-# 🚂 Lakgamana Train Reservation System
+# Lakgamana Train Reservation System
 
 A comprehensive full-stack train reservation system built with modern web technologies, featuring a React/Next.js frontend and Spring Boot backend with JWT authentication, role-based access control, and a complete admin dashboard.
 
-![Lakgamana Logo](https://via.placeholder.com/200x80/2563eb/ffffff?text=Lakgamana) <!-- Add your logo here -->
+## Features
 
-## 🌟 Features
-
-### 🎯 Core Features
+### Core Features
 - **Easy Train Booking**: Intuitive search and booking interface with real-time availability
 - **User Authentication**: Secure JWT-based authentication with role management
 - **Payment Processing**: Multiple payment methods with secure transaction handling
@@ -15,7 +13,7 @@ A comprehensive full-stack train reservation system built with modern web techno
 - **Responsive Design**: Mobile-first design that works on all devices
 - **Real-time Updates**: Live train schedules and booking status updates
 
-### 🔐 User Features
+### User Features
 - User registration and profile management
 - Train search with filters (date, route, class)
 - Seat selection and booking
@@ -24,7 +22,7 @@ A comprehensive full-stack train reservation system built with modern web techno
 - Booking history and cancellation
 - Feedback and rating system
 
-### 👨‍💼 Admin Features
+### Admin Features
 - Dashboard with analytics and statistics
 - Train management (add, edit, delete trains)
 - Route management and scheduling
@@ -34,7 +32,7 @@ A comprehensive full-stack train reservation system built with modern web techno
 - Feedback management and responses
 - System configuration and settings
 
-## 🛠️ Tech Stack
+## Tech Stack
 
 ### Frontend
 - **Next.js 15.5.0** - React framework with App Router
@@ -55,80 +53,65 @@ A comprehensive full-stack train reservation system built with modern web techno
 - **Maven** - Dependency management
 - **Swagger/OpenAPI** - API documentation
 
-## 📱 Screenshots
-
-<!-- Add screenshots here -->
-### Homepage
-![Homepage](https://via.placeholder.com/800x400/2563eb/ffffff?text=Homepage+Screenshot) <!-- Replace with actual homepage screenshot -->
-
-### Booking Interface
-![Booking](https://via.placeholder.com/800x400/059669/ffffff?text=Booking+Interface) <!-- Replace with booking page screenshot -->
-
-### Admin Dashboard
-![Admin Dashboard](https://via.placeholder.com/800x400/dc2626/ffffff?text=Admin+Dashboard) <!-- Replace with admin dashboard screenshot -->
-
-### Mobile View
-![Mobile View](https://via.placeholder.com/400x800/7c3aed/ffffff?text=Mobile+View) <!-- Replace with mobile screenshot -->
-
-## 🚀 Getting Started
+## Getting Started
 
 ### Prerequisites
-- **Node.js** 18+ and **pnpm** (or npm/yarn)
-- **Java 17** or higher
-- **Maven 3.6** or higher
-- **MySQL 8.0** or **PostgreSQL 13+** (for production)
-- **Git**
+- Node.js 18+ and pnpm (or npm/yarn)
+- Java 17 or higher
+- Maven 3.6 or higher
+- MySQL 8.0 or PostgreSQL 13+ (for production)
+- Git
 
 ### Installation
 
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/yourusername/lakgamana-frontend.git
-   cd lakgamana-frontend
-   ```
+**1. Clone the repository**
+```bash
+git clone https://github.com/yourusername/lakgamana-frontend.git
+cd lakgamana-frontend
+```
 
-2. **Install frontend dependencies**
-   ```bash
-   pnpm install
-   # or
-   npm install
-   ```
+**2. Install frontend dependencies**
+```bash
+pnpm install
+# or
+npm install
+```
 
-3. **Set up the backend**
-   ```bash
-   cd lakgamana-backend
-   mvn clean install
-   ```
+**3. Set up the backend**
+```bash
+cd lakgamana-backend
+mvn clean install
+```
 
-4. **Configure environment variables**
-   
-   Create `.env.local` in the root directory:
-   ```env
-   NEXT_PUBLIC_API_URL=http://localhost:8080/api
-   NEXT_PUBLIC_APP_NAME=Lakgamana
-   ```
+**4. Configure environment variables**
 
-5. **Start the development servers**
+Create `.env.local` in the root directory:
+```env
+NEXT_PUBLIC_API_URL=http://localhost:8080/api
+NEXT_PUBLIC_APP_NAME=Lakgamana
+```
 
-   **Backend (Terminal 1):**
-   ```bash
-   cd lakgamana-backend
-   mvn spring-boot:run
-   ```
+**5. Start the development servers**
 
-   **Frontend (Terminal 2):**
-   ```bash
-   pnpm dev
-   # or
-   npm run dev
-   ```
+Backend (Terminal 1):
+```bash
+cd lakgamana-backend
+mvn spring-boot:run
+```
 
-6. **Access the application**
-   - Frontend: http://localhost:3000
-   - Backend API: http://localhost:8080
-   - API Documentation: http://localhost:8080/swagger-ui.html
+Frontend (Terminal 2):
+```bash
+pnpm dev
+# or
+npm run dev
+```
 
-## 📁 Project Structure
+**6. Access the application**
+- Frontend: http://localhost:3000
+- Backend API: http://localhost:8080
+- API Documentation: http://localhost:8080/swagger-ui.html
+
+## Project Structure
 
 ```
 lakgamana-frontend/
@@ -155,14 +138,16 @@ lakgamana-frontend/
 └── docs/                      # Documentation
 ```
 
-## 🔧 Configuration
+## Configuration
 
 ### Database Setup
 
-**Development (H2 - Default):**
+**Development (H2 - Default)**
+
 No additional setup required. The application uses H2 in-memory database.
 
-**Production (MySQL/PostgreSQL):**
+**Production (MySQL/PostgreSQL)**
+
 Update `lakgamana-backend/src/main/resources/application.yml`:
 
 ```yaml
@@ -176,21 +161,21 @@ spring:
 
 ### Environment Variables
 
-**Frontend (.env.local):**
+**Frontend (.env.local)**
 ```env
 NEXT_PUBLIC_API_URL=http://localhost:8080/api
 NEXT_PUBLIC_APP_NAME=Lakgamana
 NEXT_PUBLIC_ENVIRONMENT=development
 ```
 
-**Backend (application.yml):**
+**Backend (application.yml)**
 ```yaml
 jwt:
   secret: your-jwt-secret-key
   expiration: 86400000 # 24 hours
 ```
 
-## 🧪 Testing
+## Testing
 
 ### Frontend Testing
 ```bash
@@ -210,7 +195,7 @@ cd lakgamana-backend
 mvn test
 ```
 
-## 📚 API Documentation
+## API Documentation
 
 The backend provides comprehensive API documentation through Swagger UI:
 
@@ -237,7 +222,7 @@ The backend provides comprehensive API documentation through Swagger UI:
 - `PUT /api/admin/trains/{id}` - Update train
 - `DELETE /api/admin/trains/{id}` - Delete train
 
-## 🔐 Security Features
+## Security Features
 
 - **JWT Authentication**: Secure token-based authentication
 - **Role-based Access Control**: Admin and User roles
@@ -247,7 +232,7 @@ The backend provides comprehensive API documentation through Swagger UI:
 - **SQL Injection Protection**: Parameterized queries
 - **XSS Protection**: Content Security Policy headers
 
-## 🚀 Deployment
+## Deployment
 
 ### Frontend Deployment (Vercel)
 1. Connect your GitHub repository to Vercel
@@ -266,9 +251,9 @@ The backend provides comprehensive API documentation through Swagger UI:
 docker-compose up -d
 ```
 
-## 🤝 Contributing
+## Contributing
 
-We welcome contributions! Please follow these steps:
+We welcome contributions. Please follow these steps:
 
 1. Fork the repository
 2. Create a feature branch (`git checkout -b feature/amazing-feature`)
@@ -282,18 +267,18 @@ We welcome contributions! Please follow these steps:
 - Update documentation as needed
 - Ensure all tests pass before submitting PR
 
-## 📝 License
+## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 👥 Team
+## Team
 
 - **Frontend Development**: Modern React/Next.js implementation
 - **Backend Development**: Spring Boot with enterprise patterns
 - **UI/UX Design**: Responsive design with Tailwind CSS
 - **Database Design**: Optimized schema with proper relationships
 
-## 🆘 Support
+## Support
 
 If you encounter any issues or have questions:
 
@@ -301,22 +286,19 @@ If you encounter any issues or have questions:
 2. Create a new issue with detailed description
 3. Contact the development team
 
-## 🔮 Future Enhancements
+## Future Enhancements
 
-- [ ] Mobile app (React Native)
-- [ ] Real-time notifications
-- [ ] Advanced analytics dashboard
-- [ ] Multi-language support
-- [ ] Social login integration
-- [ ] Advanced search filters
-- [ ] Loyalty program
-- [ ] Group booking features
+- Mobile app (React Native)
+- Real-time notifications
+- Advanced analytics dashboard
+- Multi-language support
+- Social login integration
+- Advanced search filters
+- Loyalty program
+- Group booking features
 
 ---
 
-**Made with ❤️ for modern train travel**
-
-<!-- Add badges here -->
 ![Next.js](https://img.shields.io/badge/Next.js-15.5.0-black)
 ![React](https://img.shields.io/badge/React-19.1.0-blue)
 ![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.x-green)
