@@ -312,10 +312,3 @@ If you encounter any issues or have questions:
 - Loyalty program
 - Group booking features
 
----
-
-![Next.js](https://img.shields.io/badge/Next.js-15.5.0-black)
-![React](https://img.shields.io/badge/React-19.1.0-blue)
-![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.x-green)
-![Java](https://img.shields.io/badge/Java-17-orange)
-![Tailwind CSS](https://img.shields.io/badge/Tailwind%20CSS-3.4.17-blue)
